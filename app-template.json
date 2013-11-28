@@ -4,5 +4,10 @@
   "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
   "repoBranch": "refs/heads/5202-ngui-template-configs",
   "icon": "icon-edit",
-  "category": "Blank Apps"
+  "category": "Blank Apps",
+  "screenshots": [{
+    "url": "public/img/templatePreview/blankproject_container.png"
+    }, {
+    "url": "public/img/templatePreview/blankproject_nocontainer.png"
+  }]
 }
