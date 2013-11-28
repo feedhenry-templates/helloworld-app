@@ -1,5 +1,6 @@
 {
   "name": "Blank Project-client",
   "type": "client_hybrid",
-  "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git"
+  "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
+  "repoBranch": "refs/heads/5202-ngui-template-configs"
 }
