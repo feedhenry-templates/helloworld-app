@@ -3,7 +3,7 @@
   "type": "client_hybrid",
   "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
   "repoBranch": "refs/heads/master",
-  "icon": "icon-edit",
+  "icon": "icon-html5",
   "category": "Blank Apps",
   "screenshots": [{
     "url": "public/img/templatePreview/blankproject_container.png"
