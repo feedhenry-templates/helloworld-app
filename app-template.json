@@ -2,7 +2,7 @@
   "name": "Blank Basic Hybrid Client",
   "type": "client_hybrid",
   "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
-  "repoBranch": "refs/heads/5202-ngui-template-configs",
+  "repoBranch": "refs/heads/master",
   "icon": "icon-edit",
   "category": "Blank Apps",
   "screenshots": [{
