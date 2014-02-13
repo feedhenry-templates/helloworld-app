@@ -1,4 +1,5 @@
 {
+  "id": "blank_basic_hybrid",
   "name": "Blank Basic Hybrid Client",
   "type": "client_hybrid",
   "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
