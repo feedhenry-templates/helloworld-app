@@ -2,7 +2,7 @@
   "id": "blank_basic_hybrid_app",
   "name": "Blank Basic Hybrid Client",
   "type": "client_hybrid",
-  "repoUrl": "https://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
+  "repoUrl": "git://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
   "repoBranch": "refs/heads/6066-connection-bugfixing",
   "icon": "icon-html5",
   "category": "Blank Apps",
