@@ -1,8 +1,8 @@
 {
-  "id": "blank_basic_hybrid_app",
-  "name": "Blank Basic Hybrid Client",
+  "id": "hello_world_hybrid_app",
+  "name": "Hello World Client",
   "type": "client_hybrid",
-  "repoUrl": "git://github.com/feedhenry/fh-basic-hybrid-blank-app.git",
+  "repoUrl": "https://github.com/feedhenry-templates/helloworld-app.git",
   "repoBranch": "refs/heads/6066-connection-bugfixing",
   "icon": "icon-html5",
   "category": "Blank Apps",
