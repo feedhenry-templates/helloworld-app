@@ -3,7 +3,7 @@
   "name": "Hello World Client",
   "type": "client_hybrid",
   "repoUrl": "https://github.com/feedhenry-templates/helloworld-app.git",
-  "repoBranch": "refs/heads/6066-connection-bugfixing",
+  "repoBranch": "refs/heads/6701_helloworld_renaming",
   "icon": "icon-html5",
   "category": "Blank Apps",
   "screenshots": [{
