@@ -1,7 +1,6 @@
 <!DOCTYPE html>
   <head>
-    <title>Blank App Studio</title>
-    <script src="feedhenry.js"></script>
+    <title>Hello World</title>
 
     <style>
     body { font-family: "Helvetica Neue", Helvetica, sans-serif; }
@@ -9,6 +8,16 @@
   </head>
 
   <body>
-    <p>Hello World</p>
+    <h2>Hello World</h2>
+
+    <p> Click on the button below to say hello via the cloud</p>
+
+    <input id='hello_to' type="text" name="name" value="World"><br>
+    <button id='say_hello'> Say Hello</button>
+
+    <div id="cloudResponse"></div>
+
+    <script src="feedhenry.js"></script>
+    <script src="hello.js"></script>
   </body>
 </html>
