@@ -32,7 +32,7 @@ module.exports = function (grunt) {
         files: ['<%= app.app %>/scripts/{,*/}*.js'],
         tasks: ['newer:jshint:all'],
         options: {
-          livereload: true
+          livereload: 35730
         }
       },
       styles: {
