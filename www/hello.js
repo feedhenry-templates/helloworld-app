@@ -1,8 +1,8 @@
 document.getElementById('say_hello').onclick = function () {
-  $fh.act(
+  $fh.cloud(
       {
-        act: 'hello',
-        req: {
+        path: 'hello',
+        data: {
           hello: document.getElementById('hello_to').value
         }
       },
