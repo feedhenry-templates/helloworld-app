@@ -3707,7 +3707,12 @@ Lawnchair.adapter('window-name', (function() {
 // not chainable: valid, keys
 //
 Lawnchair.adapter('dom', (function() {
-  var storage = window.localStorage
+  var storage = null;
+  try{
+    storage = window.localStorage;
+  }catch(e){
+
+  }
   // the indexer is an encapsulation of the helpers needed to keep an ordered index of the keys
   var indexer = function(name) {
     return {
@@ -3910,19 +3915,6 @@ Lawnchair.adapter('webkit-sqlite', (function() {
       return new Date()
     } // FIXME need to use better date fn
     // not entirely sure if this is needed...
-  if (!Function.prototype.bind) {
-    Function.prototype.bind = function(obj) {
-      var slice = [].slice,
-        args = slice.call(arguments, 1),
-        self = this,
-        nop = function() {}, bound = function() {
-          return self.apply(this instanceof nop ? this : (obj || {}), args.concat(slice.call(arguments)))
-        }
-      nop.prototype = self.prototype
-      bound.prototype = new nop()
-      return bound
-    }
-  }
 
   // public methods
   return {
@@ -4224,6 +4216,11 @@ Lawnchair.adapter('html5-filesystem', (function(global){
       var error = function(e) { fail(e); if ( callback ) me.fn( me.name, callback ).call( me, me ); };
       var size = options.size || 100*1024*1024;
       var name = this.name;
+      //disable file backup to icloud
+      me.backup = false;
+      if(typeof options.backup !== 'undefined'){
+        me.backup = options.backup;
+      }
 
       function requestFileSystem(amount) {
 //        console.log('in requestFileSystem');
@@ -4280,7 +4277,7 @@ Lawnchair.adapter('html5-filesystem', (function(global){
       obj.key = key;
       var error = function(e) { fail(e); if ( callback ) me.lambda( callback ).call( me ); };
       root( this, function( store ) {
-        store.getFile( key, {create:true}, function( file ) {
+        var writeContent = function(file, error){
           file.createWriter(function( writer ) {
             writer.onerror = error;
             writer.onwriteend = function() {
@@ -4297,6 +4294,18 @@ Lawnchair.adapter('html5-filesystem', (function(global){
             var writerContent = createBlobOrString(contentStr);
             writer.write(writerContent);
           }, error );
+        }
+        store.getFile( key, {create:true}, function( file ) {
+          if(typeof file.setMetadata === 'function' && (me.backup === false || me.backup === 'false')){
+            //set meta data on the file to make sure it won't be backed up by icloud
+            file.setMetadata(function(){
+              writeContent(file, error);
+            }, function(){
+              writeContent(file, error);
+            }, {'com.apple.MobileBackup': 1});
+          } else {
+            writeContent(file, error);
+          }
         }, error );
       });
       return this;
@@ -4429,6 +4438,111 @@ Lawnchair.adapter('html5-filesystem', (function(global){
     }
   };
 }(this)));
+Lawnchair.adapter('memory', (function(){
+
+    var data = {}
+
+    return {
+        valid: function() { return true },
+
+        init: function (options, callback) {
+            data[this.name] = data[this.name] || {index:[],store:{}}
+            this.index = data[this.name].index
+            this.store = data[this.name].store
+            var cb = this.fn(this.name, callback)
+            if (cb) cb.call(this, this)
+            return this
+        },
+
+        keys: function (callback) {
+            this.fn('keys', callback).call(this, this.index)
+            return this
+        },
+
+        save: function(obj, cb) {
+            var key = obj.key || this.uuid()
+            
+            this.exists(key, function(exists) {
+                if (!exists) {
+                    if (obj.key) delete obj.key
+                    this.index.push(key)
+                }
+
+                this.store[key] = obj
+                
+                if (cb) {
+                    obj.key = key
+                    this.lambda(cb).call(this, obj)
+                }
+            })
+
+            return this
+        },
+
+        batch: function (objs, cb) {
+            var r = []
+            for (var i = 0, l = objs.length; i < l; i++) {
+                this.save(objs[i], function(record) {
+                    r.push(record)
+                })
+            }
+            if (cb) this.lambda(cb).call(this, r)
+            return this
+        },
+
+        get: function (keyOrArray, cb) {
+            var r;
+            if (this.isArray(keyOrArray)) {
+                r = []
+                for (var i = 0, l = keyOrArray.length; i < l; i++) {
+                    r.push(this.store[keyOrArray[i]])
+                }
+            } else {
+                r = this.store[keyOrArray]
+                if (r) r.key = keyOrArray
+            }
+            if (cb) this.lambda(cb).call(this, r)
+            return this 
+        },
+
+        exists: function (key, cb) {
+            this.lambda(cb).call(this, !!(this.store[key]))
+            return this
+        },
+
+        all: function (cb) {
+            var r = []
+            for (var i = 0, l = this.index.length; i < l; i++) {
+                var obj = this.store[this.index[i]]
+                obj.key = this.index[i]
+                r.push(obj)
+            }
+            this.fn(this.name, cb).call(this, r)
+            return this
+        },
+
+        remove: function (keyOrArray, cb) {
+            var del = this.isArray(keyOrArray) ? keyOrArray : [keyOrArray]
+            for (var i = 0, l = del.length; i < l; i++) {
+                var key = del[i].key ? del[i].key : del[i]
+                var where = this.indexOf(this.index, key)
+                if (where < 0) continue /* key not present */
+                delete this.store[key]
+                this.index.splice(where, 1)
+            }
+            if (cb) this.lambda(cb).call(this)
+            return this
+        },
+
+        nuke: function (cb) {
+            this.store = data[this.name].store = {}
+            this.index = data[this.name].index = []
+            if (cb) this.lambda(cb).call(this)
+            return this
+        }
+    }
+/////
+})());
 ; browserify_shim__define__module__export__(typeof Lawnchair != "undefined" ? Lawnchair : window.Lawnchair);
 
 }).call(global, undefined, undefined, undefined, undefined, function defineExport(ex) { module.exports = ex; });
@@ -6918,7 +7032,10 @@ EventEmitter.prototype.addListener = function(type, listener) {
                     'leak detected. %d listeners added. ' +
                     'Use emitter.setMaxListeners() to increase limit.',
                     this._events[type].length);
-      console.trace();
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
     }
   }
 
@@ -7388,6 +7505,7 @@ module.exports = function(val){
 
 },{}],16:[function(_dereq_,module,exports){
 var constants = _dereq_("./modules/constants");
+var events = _dereq_("./modules/events");
 var logger = _dereq_("./modules/logger");
 var ajax = _dereq_("./modules/ajax");
 var events = _dereq_("./modules/events");
@@ -7416,7 +7534,7 @@ var addListener = function(type, listener){
     } else if(cloud.getInitError()){
       listener(cloud.getInitError());
     }
-  } 
+  }
 };
 
 var once = function(type, listener){
@@ -7456,6 +7574,7 @@ fh.sync = api_sync;
 fh.ajax = fh.__ajax = ajax;
 fh.mbaas = api_mbaas;
 fh._getDeviceId = device.getDeviceId;
+fh.fh_timeout = 60000; //keep backward compatible
 
 fh.getCloudURL = function(){
   return cloud.getCloudHostUrl();
@@ -7485,6 +7604,19 @@ fh.on(constants.INIT_EVENT, function(err, host){
   }
 });
 
+//keep backward compatibility
+fh.on(constants.INTERNAL_CONFIG_LOADED_EVENT, function(err, host){
+  if(err){
+    fh.app_props = {};
+  } else {
+    fh.app_props = appProps.getAppProps();
+  }
+
+  // Emit config loaded event - appprops set at this point
+  // V2 legacy SDK uses this to know when to fire $fh.ready (i.e. appprops is now set)
+  events.emit(constants.CONFIG_LOADED_EVENT, null);
+});
+
 //for test
 fh.reset = cloud.reset;
 //we should really stop polluting global name space. Ideally we should ask browserify to use "$fh" when umd-fy the module. However, "$" is not allowed as the standard module name.
@@ -7497,7 +7629,7 @@ module.exports = fh;
 
 
 
-},{"./modules/ajax":18,"./modules/api_act":19,"./modules/api_auth":20,"./modules/api_cloud":21,"./modules/api_hash":22,"./modules/api_mbaas":23,"./modules/api_sec":24,"./modules/appProps":25,"./modules/constants":27,"./modules/device":29,"./modules/events":30,"./modules/fhparams":31,"./modules/logger":38,"./modules/sync-cli":46,"./modules/waitForCloud":48}],17:[function(_dereq_,module,exports){
+},{"./modules/ajax":18,"./modules/api_act":19,"./modules/api_auth":20,"./modules/api_cloud":21,"./modules/api_hash":22,"./modules/api_mbaas":23,"./modules/api_sec":24,"./modules/appProps":25,"./modules/constants":27,"./modules/device":29,"./modules/events":30,"./modules/fhparams":31,"./modules/logger":37,"./modules/sync-cli":45,"./modules/waitForCloud":47}],17:[function(_dereq_,module,exports){
 var XDomainRequestWrapper = function(xdr){
   this.xdr = xdr;
   this.isWrapper = true;
@@ -7563,19 +7695,18 @@ XDomainRequestWrapper.prototype.getResponseHeader = function(n){
 module.exports = XDomainRequestWrapper;
 
 },{}],18:[function(_dereq_,module,exports){
-//a shameless copy from https://github.com/ForbesLindesay/ajax/blob/master/index.js. 
+//a shameless copy from https://github.com/ForbesLindesay/ajax/blob/master/index.js.
 //it has the same methods and config options as jQuery/zeptojs but very light weight. see http://api.jquery.com/jQuery.ajax/
 //a few small changes are made for supporting IE 8 and other features:
 //1. use getXhr function to replace the default XMLHttpRequest implementation for supporting IE8
 //2. Integrate with events emitter. So to subscribe ajax events, you can do $fh.on("ajaxStart", handler). See http://api.jquery.com/Ajax_Events/ for full list of events
-//3. allow passing xhr factory method through options: e.g. $fh.ajax({xhr: function(){/*own implementation of xhr*/}}); 
+//3. allow passing xhr factory method through options: e.g. $fh.ajax({xhr: function(){/*own implementation of xhr*/}});
 //4. Use fh_timeout value as the default timeout
 //5. an extra option called "tryJSONP" to allow try the same call with JSONP if normal CORS failed - should only be used internally
 //6. for jsonp, allow to specify the callback query param name using the "jsonp" option
 
 var eventsHandler = _dereq_("./events");
 var XDomainRequestWrapper = _dereq_("./XDomainRequestWrapper");
-var consts = _dereq_("./constants");
 var logger = _dereq_("./logger");
 
 var type
@@ -7600,13 +7731,19 @@ var jsonpID = 0,
 
 var ajax = module.exports = function (options) {
   var settings = extend({}, options || {})
+  //keep backward compatibility
+  if(window && window.$fh && typeof window.$fh.fh_timeout === "number"){
+    ajax.settings.timeout = window.$fh.fh_timeout;
+  }
+
   for (key in ajax.settings)
     if (settings[key] === undefined) settings[key] = ajax.settings[key]
 
   ajaxStart(settings)
 
-  if (!settings.crossDomain) settings.crossDomain = /^([\w-]+:)?\/\/([^\/]+)/.test(settings.url) &&
-    RegExp.$2 != window.location.host
+  if (!settings.crossDomain) {
+    settings.crossDomain = /^([\w-]+:)?\/\/([^\/]+)/.test(settings.url) && (RegExp.$1 != window.location.protocol || RegExp.$2 != window.location.host)
+  } 
 
   var dataType = settings.dataType,
     hasPlaceholder = /=\?/.test(settings.url)
@@ -7624,7 +7761,7 @@ var ajax = module.exports = function (options) {
     baseHeaders = {},
     protocol = /^([\w-]+:)\/\//.test(settings.url) ? RegExp.$1 : window.location.protocol,
     xhr = settings.xhr(settings.crossDomain),
-    abortTimeout
+    abortTimeout = null;
 
   if (!settings.crossDomain) baseHeaders['X-Requested-With'] = 'XMLHttpRequest'
   if (mime) {
@@ -7636,9 +7773,21 @@ var ajax = module.exports = function (options) {
     baseHeaders['Content-Type'] = (settings.contentType || 'application/x-www-form-urlencoded')
   settings.headers = extend(baseHeaders, settings.headers || {})
 
+  if (typeof Titanium !== 'undefined') {
+    xhr.onerror  = function(){
+      if (!abortTimeout){
+        return;
+      }
+      clearTimeout(abortTimeout);
+      ajaxError(null, 'error', xhr, settings);
+    };
+  }
+
   xhr.onreadystatechange = function () {
+
     if (xhr.readyState == 4) {
       clearTimeout(abortTimeout)
+      abortTimeout = undefined;
       var result, error = false
       if(settings.tryJSONP){
         //check if the request has fail. In some cases, we may want to try jsonp as well. Again, FH only...
@@ -7779,6 +7928,7 @@ ajax.JSONP = function (options) {
 
   window[callbackName] = function (data) {
     clearTimeout(abortTimeout)
+    abortTimeout = undefined;
     //todo: remove script
     //$(script).remove()
     delete window[callbackName]
@@ -7814,10 +7964,19 @@ function getXhr(crossDomain){
   if(window.XMLHttpRequest){
     xhr = new XMLHttpRequest();
   }
-  //for IE8
-  if(isIE() && (crossDomain === true) && typeof window.XDomainRequest !== "undefined"){
+  //for IE8 only. Need to make sure it's not used when running inside Cordova.
+  if(isIE() && (crossDomain === true) && typeof window.XDomainRequest !== "undefined" && typeof window.cordova === "undefined"){
     xhr = new XDomainRequestWrapper(new XDomainRequest());
   }
+  // For Titanium SDK
+  if (typeof Titanium !== 'undefined'){
+    var parms = {};
+    if(ajax.settings && ajax.settings.timeout){
+      params.timeout = ajax.settings.timeout;
+    }
+    xhr = Titanium.Network.createHTTPClient(params);
+  }
+
   return xhr;
 }
 
@@ -7847,9 +8006,7 @@ ajax.settings = {
     text: 'text/plain'
   },
   // Whether the request is to another domain
-  crossDomain: false,
-  // Default timeout
-  timeout: consts.fh_timeout
+  crossDomain: false
 }
 
 function mimeToDataType(mime) {
@@ -7938,13 +8095,15 @@ function extend(target) {
   })
   return target
 }
-},{"./XDomainRequestWrapper":17,"./constants":27,"./events":30,"./logger":38,"type-of":15}],19:[function(_dereq_,module,exports){
+
+},{"./XDomainRequestWrapper":17,"./events":30,"./logger":37,"type-of":15}],19:[function(_dereq_,module,exports){
 var logger =_dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
 var ajax = _dereq_("./ajax");
 var JSON = _dereq_("JSON");
 var handleError = _dereq_("./handleError");
+var appProps = _dereq_("./appProps");
 
 function doActCall(opts, success, fail){
   var cloud_host = cloud.getCloudHost();
@@ -7958,7 +8117,7 @@ function doActCall(opts, success, fail){
     "dataType": "json",
     "data": JSON.stringify(params),
     "contentType": "application/json",
-    "timeout": opts.timeout,
+    "timeout": opts.timeout || appProps.timeout,
     "success": success,
     "error": function(req, statusText, error){
       return handleError(fail, req, statusText, error);
@@ -7987,8 +8146,9 @@ module.exports = function(opts, success, fail){
     }
   })
 }
-},{"./ajax":18,"./fhparams":31,"./handleError":33,"./logger":38,"./waitForCloud":48,"JSON":3}],20:[function(_dereq_,module,exports){
-var logger =_dereq_("./logger");
+
+},{"./ajax":18,"./appProps":25,"./fhparams":31,"./handleError":32,"./logger":37,"./waitForCloud":47,"JSON":3}],20:[function(_dereq_,module,exports){
+var logger = _dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
 var ajax = _dereq_("./ajax");
@@ -7999,9 +8159,9 @@ var constants = _dereq_("./constants");
 var checkAuth = _dereq_("./checkAuth");
 var appProps = _dereq_("./appProps");
 
-module.exports = function(opts, success, fail){
-  if(!fail){
-    fail = function(msg, error){
+module.exports = function(opts, success, fail) {
+  if (!fail) {
+    fail = function(msg, error) {
       logger.debug(msg + ":" + JSON.stringify(error));
     };
   }
@@ -8012,8 +8172,8 @@ module.exports = function(opts, success, fail){
     return fail('auth_no_clientToken', {});
   }
 
-  cloud.ready(function(err, data){
-    if(err){
+  cloud.ready(function(err, data) {
+    if (err) {
       return fail(err.message, err);
     } else {
       var req = {};
@@ -8033,6 +8193,11 @@ module.exports = function(opts, success, fail){
       req.device = device.getDeviceId();
       var app_props = appProps.getAppProps();
       var path = app_props.host + constants.boxprefix + "admin/authpolicy/auth";
+
+      if (app_props.local) {
+        path = constants.boxprefix + "admin/authpolicy/auth";
+      }
+
       req = fhparams.addFHParams(req);
 
       ajax({
@@ -8042,7 +8207,7 @@ module.exports = function(opts, success, fail){
         "data": JSON.stringify(req),
         "dataType": "json",
         "contentType": "application/json",
-        "timeout" : opts.timeout || app_props.timeout || constants.fh_timeout,
+        "timeout": opts.timeout || app_props.timeout,
         success: function(res) {
           checkAuth.handleAuthResponse(endurl, res, success, fail);
         },
@@ -8053,13 +8218,14 @@ module.exports = function(opts, success, fail){
     }
   });
 }
-},{"./ajax":18,"./appProps":25,"./checkAuth":26,"./constants":27,"./device":29,"./fhparams":31,"./handleError":33,"./logger":38,"./waitForCloud":48,"JSON":3}],21:[function(_dereq_,module,exports){
+},{"./ajax":18,"./appProps":25,"./checkAuth":26,"./constants":27,"./device":29,"./fhparams":31,"./handleError":32,"./logger":37,"./waitForCloud":47,"JSON":3}],21:[function(_dereq_,module,exports){
 var logger =_dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
 var ajax = _dereq_("./ajax");
 var JSON = _dereq_("JSON");
 var handleError = _dereq_("./handleError");
+var appProps = _dereq_("./appProps");
 
 function doCloudCall(opts, success, fail){
   var cloud_host = cloud.getCloudHost();
@@ -8072,7 +8238,7 @@ function doCloudCall(opts, success, fail){
     "dataType": opts.dataType || "json",
     "data": JSON.stringify(params),
     "contentType": opts.contentType || "application/json",
-    "timeout": opts.timeout,
+    "timeout": opts.timeout || appProps.timeout,
     "success": success,
     "error": function(req, statusText, error){
       return handleError(fail, req, statusText, error);
@@ -8097,7 +8263,7 @@ module.exports = function(opts, success, fail){
     }
   })
 }
-},{"./ajax":18,"./fhparams":31,"./handleError":33,"./logger":38,"./waitForCloud":48,"JSON":3}],22:[function(_dereq_,module,exports){
+},{"./ajax":18,"./appProps":25,"./fhparams":31,"./handleError":32,"./logger":37,"./waitForCloud":47,"JSON":3}],22:[function(_dereq_,module,exports){
 var hashImpl = _dereq_("./security/hash");
 
 module.exports = function(p, s, f){
@@ -8109,7 +8275,7 @@ module.exports = function(p, s, f){
   params.params = p;
   hashImpl(params, s, f);
 };
-},{"./security/hash":44}],23:[function(_dereq_,module,exports){
+},{"./security/hash":43}],23:[function(_dereq_,module,exports){
 var logger =_dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
@@ -8117,7 +8283,7 @@ var ajax = _dereq_("./ajax");
 var JSON = _dereq_("JSON");
 var handleError = _dereq_("./handleError");
 var consts = _dereq_("./constants");
-
+var appProps = _dereq_("./appProps");
 
 module.exports = function(opts, success, fail){
   logger.debug("mbaas is called.");
@@ -8145,7 +8311,7 @@ module.exports = function(opts, success, fail){
         "dataType": "json",
         "data": JSON.stringify(params),
         "contentType": "application/json",
-        "timeout": opts.timeout || consts.fh_timeout,
+        "timeout": opts.timeout || appProps.timeout,
         "success": success,
         "error": function(req, statusText, error){
           return handleError(fail, req, statusText, error);
@@ -8155,7 +8321,7 @@ module.exports = function(opts, success, fail){
   });
 } 
 
-},{"./ajax":18,"./constants":27,"./fhparams":31,"./handleError":33,"./logger":38,"./waitForCloud":48,"JSON":3}],24:[function(_dereq_,module,exports){
+},{"./ajax":18,"./appProps":25,"./constants":27,"./fhparams":31,"./handleError":32,"./logger":37,"./waitForCloud":47,"JSON":3}],24:[function(_dereq_,module,exports){
 var keygen = _dereq_("./security/aes-keygen");
 var aes = _dereq_("./security/aes-node");
 var rsa = _dereq_("./security/rsa-node");
@@ -8199,7 +8365,7 @@ module.exports = function(p, s, f){
     }
   }
 }
-},{"./security/aes-keygen":42,"./security/aes-node":43,"./security/hash":44,"./security/rsa-node":45}],25:[function(_dereq_,module,exports){
+},{"./security/aes-keygen":41,"./security/aes-node":42,"./security/hash":43,"./security/rsa-node":44}],25:[function(_dereq_,module,exports){
 var consts = _dereq_("./constants");
 var ajax = _dereq_("./ajax");
 var logger = _dereq_("./logger");
@@ -8216,7 +8382,7 @@ var load = function(cb) {
   if (local) {
     app_props = {};
     app_props.local = true;
-    app_props.host = url_params.url;
+    app_props.host = url_params.url.replace(/#.*?$/g, '');
     app_props.appid = "000000000000000000000000";
     app_props.appkey = "0000000000000000000000000000000000000000";
     app_props.projectid = "000000000000000000000000";
@@ -8270,7 +8436,8 @@ module.exports = {
   getAppProps: getAppProps,
   setAppProps: setAppProps
 };
-},{"./ajax":18,"./constants":27,"./logger":38,"./queryMap":40}],26:[function(_dereq_,module,exports){
+
+},{"./ajax":18,"./constants":27,"./logger":37,"./queryMap":39}],26:[function(_dereq_,module,exports){
 var logger = _dereq_("./logger");
 var queryMap = _dereq_("./queryMap");
 var JSON = _dereq_("JSON");
@@ -8368,7 +8535,7 @@ if (window.addEventListener) {
   window.addEventListener('load', function(){
     checkAuth(window.location.href);
   }, false); //W3C
-} else {
+} else if (window.attachEvent) {
   window.attachEvent('onload', function(){
     checkAuth(window.location.href);
   }); //IE
@@ -8378,14 +8545,16 @@ module.exports = {
   "handleAuthResponse": handleAuthResponse
 };
 
-},{"./fhparams":31,"./logger":38,"./queryMap":40,"JSON":3}],27:[function(_dereq_,module,exports){
+},{"./fhparams":31,"./logger":37,"./queryMap":39,"JSON":3}],27:[function(_dereq_,module,exports){
 module.exports = {
-  "fh_timeout": 20000,
   "boxprefix": "/box/srv/1.1/",
-  "sdk_version": "2.0.2-alpha",
+  "sdk_version": "2.4.3-BUILD-NUMBER",
   "config_js": "fhconfig.json",
-  "INIT_EVENT": "fhinit"
+  "INIT_EVENT": "fhinit",
+  "INTERNAL_CONFIG_LOADED_EVENT": "internalfhconfigloaded",
+  "CONFIG_LOADED_EVENT": "fhconfigloaded"
 };
+
 },{}],28:[function(_dereq_,module,exports){
 module.exports = {
   readCookieValue  : function (cookie_name) {
@@ -8482,7 +8651,7 @@ module.exports = {
   }
 }
 
-},{"./cookies":28,"./logger":38,"./platformsMap":39,"./uuid":47}],30:[function(_dereq_,module,exports){
+},{"./cookies":28,"./logger":37,"./platformsMap":38,"./uuid":46}],30:[function(_dereq_,module,exports){
 var EventEmitter = _dereq_('events').EventEmitter;
 
 var emitter = new EventEmitter();
@@ -8559,28 +8728,7 @@ module.exports = {
   "setAuthSessionToken":setAuthSessionToken
 }
 
-},{"./appProps":25,"./device":29,"./logger":38,"./sdkversion":41}],32:[function(_dereq_,module,exports){
-module.exports = function(){
-  var path = null;
-  var scripts = document.getElementsByTagName('script');
-  var term = /(feedhenry.*?\.js)/;
-  for (var n = scripts.length-1; n>-1; n--) {
-      //trim query parameters
-      var src = scripts[n].src.replace(/\?.*$/, '');
-      //find feedhenry*.js file
-      var matches = src.match(term);
-      if(matches && matches.length === 2){
-        var fhjs = matches[1];
-        if (src.indexOf(fhjs) === (src.length - fhjs.length)) {
-          path = src.substring(0, src.length - fhjs.length);
-          break;
-        }
-      }
-  }
-  return path;
-};
-
-},{}],33:[function(_dereq_,module,exports){
+},{"./appProps":25,"./device":29,"./logger":37,"./sdkversion":40}],32:[function(_dereq_,module,exports){
 var JSON = _dereq_("JSON");
 
 module.exports = function(fail, req, resStatus, error){
@@ -8607,7 +8755,7 @@ module.exports = function(fail, req, resStatus, error){
   }
 };
 
-},{"JSON":3}],34:[function(_dereq_,module,exports){
+},{"JSON":3}],33:[function(_dereq_,module,exports){
 var constants = _dereq_("./constants");
 var appProps = _dereq_("./appProps");
 
@@ -8697,8 +8845,7 @@ CloudHost.prototype.getCloudUrl = function(path){
 
 
 module.exports = CloudHost;
-},{"./appProps":25,"./constants":27}],35:[function(_dereq_,module,exports){
-var findFHPath = _dereq_("./findFHPath");
+},{"./appProps":25,"./constants":27}],34:[function(_dereq_,module,exports){
 var loadScript = _dereq_("./loadScript");
 var Lawnchair = _dereq_('../../libs/generated/lawnchair');
 var lawnchairext = _dereq_('./lawnchair-ext');
@@ -8710,16 +8857,21 @@ var logger = _dereq_("./logger");
 var JSON = _dereq_("JSON");
 var hashFunc = _dereq_("./security/hash");
 var appProps = _dereq_("./appProps");
+var constants = _dereq_("./constants");
+var events = _dereq_("./events");
 
 var init = function(cb) {
   appProps.load(function(err, data) {
     if (err) return cb(err);
+
+    // Emit internal config loaded event - SDK will now set appprops
+    events.emit(constants.INTERNAL_CONFIG_LOADED_EVENT, null, data);
     return loadCloudProps(data, cb);
   });
-}
+};
 
 var loadCloudProps = function(app_props, callback) {
-  if(app_props.loglevel){
+  if (app_props.loglevel) {
     logger.setLevel(app_props.loglevel);
   }
   // If local - shortcircuit the init - just return the host
@@ -8754,40 +8906,18 @@ var loadCloudProps = function(app_props, callback) {
   //as dom, webkit-sqlite, localFileStorage, window-name
   var lcConf = {
     name: "fh_init_storage",
-    adapter: ["dom", "webkit-sqlite", "localFileStorage", "window-name"],
+    adapter: ["dom", "webkit-sqlite", "window-name"],
     fail: function(msg, err) {
       var error_message = 'read/save from/to local storage failed  msg:' + msg + ' err:' + err;
       return fail(error_message, {});
     }
   };
 
-  var storage = null;
-  try {
-    storage = new Lawnchair(lcConf, function() {});
-  } catch (e) {
-    //when dom adapter failed, Lawnchair throws an error
-    //shoudn't go in here anymore
-    lcConf.adapter = undefined;
-    storage = new Lawnchair(lcConf, function() {});
+  if (typeof Titanium !== "undefined") {
+    lcConf.adapter = ['titanium'];
   }
 
-  var path = app_props.host + consts.boxprefix + "app/init";
-
-  storage.get('fh_init', function(storage_res) {
-    var savedHost = null;
-    if (storage_res && storage_res.value !== null && typeof(storage_res.value) !== "undefined" && storage_res !== "") {
-      storage_res = typeof(storage_res) === "string" ? JSON.parse(storage_res) : storage_res;
-      storage_res.value = typeof(storage_res.value) === "string" ? JSON.parse(storage_res.value) : storage_res.value;
-      if (storage_res.value.init) {
-        app_props.init = storage_res.value.init;
-      } else {
-        //keep it backward compatible.
-        app_props.init = typeof(storage_res.value) === "string" ? JSON.parse(storage_res.value) : storage_res.value;
-      }
-      if (storage_res.value.hosts) {
-        savedHost = storage_res.value;
-      }
-    }
+  var doInit = function(path, appProps, savedHost, storage) {
     var data = fhparams.buildFHParams();
 
     ajax({
@@ -8797,12 +8927,14 @@ var loadCloudProps = function(app_props, callback) {
       "dataType": "json",
       "contentType": "application/json",
       "data": JSON.stringify(data),
-      "timeout": app_props.timeout || consts.fh_timeout,
+      "timeout": appProps.timeout,
       "success": function(initRes) {
-        storage.save({
-          key: "fh_init",
-          value: initRes
-        }, function() {});
+        if (storage) {
+          storage.save({
+            key: "fh_init",
+            value: initRes
+          }, function() {});
+        }
         if (callback) {
           callback(null, {
             cloud: initRes
@@ -8811,7 +8943,7 @@ var loadCloudProps = function(app_props, callback) {
       },
       "error": function(req, statusText, error) {
         var errormsg = "unknown";
-        if(req){
+        if (req) {
           errormsg = req.status + " - " + req.responseText;
         }
         logger.error("App init returned error : " + errormsg);
@@ -8836,14 +8968,41 @@ var loadCloudProps = function(app_props, callback) {
         }
       }
     });
-  });
+  };
+
+  var storage = null;
+  var path = app_props.host + consts.boxprefix + "app/init";
+  try {
+    storage = new Lawnchair(lcConf, function() {});
+    storage.get('fh_init', function(storage_res) {
+      var savedHost = null;
+      if (storage_res && storage_res.value !== null && typeof(storage_res.value) !== "undefined" && storage_res !== "") {
+        storage_res = typeof(storage_res) === "string" ? JSON.parse(storage_res) : storage_res;
+        storage_res.value = typeof(storage_res.value) === "string" ? JSON.parse(storage_res.value) : storage_res.value;
+        if (storage_res.value.init) {
+          app_props.init = storage_res.value.init;
+        } else {
+          //keep it backward compatible.
+          app_props.init = typeof(storage_res.value) === "string" ? JSON.parse(storage_res.value) : storage_res.value;
+        }
+        if (storage_res.value.hosts) {
+          savedHost = storage_res.value;
+        }
+      }
+
+      doInit(path, app_props, savedHost, storage);
+    });
+  } catch (e) {
+    //for whatever reason (e.g. localStorage is disabled) Lawnchair is failed to init, just do the init
+    doInit(path, app_props, null, null);
+  }
 };
 
 module.exports = {
   "init": init,
   "loadCloudProps": loadCloudProps
 }
-},{"../../libs/generated/lawnchair":2,"./ajax":18,"./appProps":25,"./constants":27,"./fhparams":31,"./findFHPath":32,"./handleError":33,"./lawnchair-ext":36,"./loadScript":37,"./logger":38,"./security/hash":44,"JSON":3}],36:[function(_dereq_,module,exports){
+},{"../../libs/generated/lawnchair":2,"./ajax":18,"./appProps":25,"./constants":27,"./events":30,"./fhparams":31,"./handleError":32,"./lawnchair-ext":35,"./loadScript":36,"./logger":37,"./security/hash":43,"JSON":3}],35:[function(_dereq_,module,exports){
 var Lawnchair = _dereq_('../../libs/generated/lawnchair');
 
 var fileStorageAdapter = function (app_props, hashFunc) {
@@ -9031,7 +9190,7 @@ var addAdapter = function(app_props, hashFunc){
 module.exports = {
   addAdapter: addAdapter
 }
-},{"../../libs/generated/lawnchair":2}],37:[function(_dereq_,module,exports){
+},{"../../libs/generated/lawnchair":2}],36:[function(_dereq_,module,exports){
 module.exports = function (url, callback) {
   var script;
   var head = document.head || document.getElementsByTagName("head")[0] || document.documentElement;
@@ -9054,7 +9213,7 @@ module.exports = function (url, callback) {
   head.insertBefore(script, head.firstChild);
 };
 
-},{}],38:[function(_dereq_,module,exports){
+},{}],37:[function(_dereq_,module,exports){
 var console = _dereq_('console');
 var log = _dereq_('loglevel');
 
@@ -9078,7 +9237,7 @@ log.setLevel('info');
  * Use either string or integer value
  */
 module.exports = log;
-},{"console":8,"loglevel":14}],39:[function(_dereq_,module,exports){
+},{"console":8,"loglevel":14}],38:[function(_dereq_,module,exports){
 module.exports = [
   {
     "destination" :"ipad",
@@ -9106,7 +9265,7 @@ module.exports = [
   }
 ];
 
-},{}],40:[function(_dereq_,module,exports){
+},{}],39:[function(_dereq_,module,exports){
 module.exports = function(url) {
   var qmap = {};
   var i = url.split("?");
@@ -9122,7 +9281,7 @@ module.exports = function(url) {
   }
   return qmap;
 };
-},{}],41:[function(_dereq_,module,exports){
+},{}],40:[function(_dereq_,module,exports){
 var constants = _dereq_("./constants");
 
 module.exports = function() {
@@ -9135,7 +9294,7 @@ module.exports = function() {
   return type + "/" + constants.sdk_version;
 };
 
-},{"./constants":27}],42:[function(_dereq_,module,exports){
+},{"./constants":27}],41:[function(_dereq_,module,exports){
 var rsa = _dereq_("../../../libs/rsa");
 var SecureRandom = rsa.SecureRandom;
 var byte2Hex = rsa.byte2Hex;
@@ -9177,7 +9336,7 @@ var aes_keygen = function(p, s, f){
 }
 
 module.exports = aes_keygen;
-},{"../../../libs/rsa":4}],43:[function(_dereq_,module,exports){
+},{"../../../libs/rsa":4}],42:[function(_dereq_,module,exports){
 var CryptoJS = _dereq_("../../../libs/generated/crypto");
 
 var encrypt = function(p, s, f){
@@ -9218,7 +9377,7 @@ module.exports = {
   encrypt: encrypt,
   decrypt: decrypt
 }
-},{"../../../libs/generated/crypto":1}],44:[function(_dereq_,module,exports){
+},{"../../../libs/generated/crypto":1}],43:[function(_dereq_,module,exports){
 var CryptoJS = _dereq_("../../../libs/generated/crypto");
 
 
@@ -9243,7 +9402,7 @@ var hash = function(p, s, f){
 }
 
 module.exports = hash;
-},{"../../../libs/generated/crypto":1}],45:[function(_dereq_,module,exports){
+},{"../../../libs/generated/crypto":1}],44:[function(_dereq_,module,exports){
 var rsa = _dereq_("../../../libs/rsa");
 var RSAKey = rsa.RSAKey;
 
@@ -9268,7 +9427,7 @@ var encrypt = function(p, s, f){
 module.exports = {
   encrypt: encrypt
 }
-},{"../../../libs/rsa":4}],46:[function(_dereq_,module,exports){
+},{"../../../libs/rsa":4}],45:[function(_dereq_,module,exports){
 var JSON = _dereq_("JSON");
 var actAPI = _dereq_("./api_act");
 var cloudAPI = _dereq_("./api_cloud");
@@ -9315,8 +9474,12 @@ var self = {
     // Is the background sync with the cloud currently active
     "storage_strategy" : "html5-filesystem",
     // Storage strategy to use for Lawnchair - supported strategies are 'html5-filesystem' and 'dom'
-    "file_system_quota" : 50 * 1024 * 1204
+    "file_system_quota" : 50 * 1024 * 1204,
     // Amount of space to request from the HTML5 filesystem API when running in browser
+    "has_custom_sync" : null,
+    //If the app has custom cloud sync function, it should be set to true. If set to false, the default mbaas sync implementation will be used. When set to null or undefined, 
+    //a check will be performed to determine which implementation to use
+    "icloud_backup" : false //ios only. If set to true, the file will be backed by icloud
   },
 
   notifications: {
@@ -9349,9 +9512,12 @@ var self = {
   // Initialise config to default values;
   config: undefined,
 
+  //TODO: deprecate this
   notify_callback: undefined,
 
-  hasCustomSync : undefined,
+  notify_callback_map : {},
+
+  init_is_called: false,
 
   // PUBLIC FUNCTION IMPLEMENTATIONS
   init: function(options) {
@@ -9362,15 +9528,25 @@ var self = {
       self.config[i] = options[i];
     }
 
-    self.datasetMonitor();
+    //prevent multiple monitors from created if init is called multiple times
+    if(!self.init_is_called){
+      self.init_is_called = true;
+      self.datasetMonitor();
+    }
   },
 
-  notify: function(callback) {
-    self.notify_callback = callback;
+  notify: function(datasetId, callback) {
+    if(arguments.length === 1 && typeof datasetId === 'function'){
+      self.notify_callback = datasetId;
+    } else {
+      self.notify_callback_map[datasetId] = callback;
+    }
   },
 
   manage: function(dataset_id, options, query_params, meta_data, cb) {
     self.consoleLog('manage - START');
+
+    var options = options || {};
 
     var doManage = function(dataset) {
       self.consoleLog('doManage dataset :: initialised = ' + dataset.initialised + " :: " + dataset_id + ' :: ' + JSON.stringify(options));
@@ -9383,7 +9559,9 @@ var self = {
       dataset.syncRunning = false;
       dataset.syncPending = true;
       dataset.initialised = true;
-      dataset.meta = {};
+      if(typeof dataset.meta === "undefined"){
+        dataset.meta = {};
+      }
 
       self.saveDataSet(dataset_id, function() {
 
@@ -9416,7 +9594,9 @@ var self = {
           // No dataset in memory or local storage - create a new one and put it in memory
           self.consoleLog('manage - Creating new dataset for id ' + dataset_id);
           var dataset = {};
+          dataset.data = {};
           dataset.pending = {};
+          dataset.meta = {};
           self.datasets[dataset_id] = dataset;
           doManage(dataset);
         });
@@ -9453,11 +9633,16 @@ var self = {
   },
 
   create: function(dataset_id, data, success, failure) {
+    if(data == null){
+      if(failure){
+        return failure("null_data");
+      }
+    }
     self.addPendingObj(dataset_id, null, data, "create", success, failure);
   },
 
   read: function(dataset_id, uid, success, failure) {
-      self.getDataSet(dataset_id, function(dataset) {
+    self.getDataSet(dataset_id, function(dataset) {
       var rec = dataset.data[uid];
       if (!rec) {
         failure("unknown_uid");
@@ -9549,7 +9734,8 @@ var self = {
 
   doNotify: function(dataset_id, uid, code, message) {
 
-    if( self.notify_callback ) {
+    if( self.notify_callback || self.notify_callback_map[dataset_id]) {
+      var notifyFunc = self.notify_callback_map[dataset_id] || self.notify_callback;
       if ( self.config['notify_' + code] ) {
         var notification = {
           "dataset_id" : dataset_id,
@@ -9559,7 +9745,7 @@ var self = {
         };
         // make sure user doesn't block
         setTimeout(function () {
-          self.notify_callback(notification);
+          notifyFunc(notification);
         }, 0);
       }
     }
@@ -9571,7 +9757,9 @@ var self = {
     if (dataset) {
       success(dataset);
     } else {
-      failure('unknown_dataset ' + dataset_id, dataset_id);
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
     }
   },
 
@@ -9581,7 +9769,9 @@ var self = {
     if (dataset) {
       success(dataset.query_params);
     } else {
-      failure('unknown_dataset ' + dataset_id, dataset_id);
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
     }
   },
 
@@ -9607,7 +9797,9 @@ var self = {
     if (dataset) {
       success(dataset.meta_data);
     } else {
-      failure('unknown_dataset ' + dataset_id, dataset_id);
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
     }
   },
 
@@ -9633,7 +9825,9 @@ var self = {
     if (dataset) {
       success(dataset.config);
     } else {
-      failure('unknown_dataset ' + dataset_id, dataset_id);
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
     }
   },
 
@@ -9781,7 +9975,9 @@ var self = {
         pendingObj.preHash = self.generateHash(rec.data);
         storePendingObject(pendingObj);
       }, function(code, msg) {
-        failure(code, msg);
+        if(failure){
+          failure(code, msg);
+        }
       });
     }
   },
@@ -9856,6 +10052,9 @@ var self = {
 
                 //Check to see if any delayed pending records can now be set to ready
                 self.updateDelayedFromNewData(dataset_id, dataSet, res);
+
+                //Check meta data as well to make sure it contains the correct info
+                self.updateMetaFromNewData(dataset_id, dataSet, res);
 
                 // Update the new dataset with details of any inflight updates which we have not received a response on
                 self.updateNewDataFromInFlight(dataset_id, dataSet, res);
@@ -9984,12 +10183,13 @@ var self = {
     for( var dataset_id in self.datasets ) {
       if( self.datasets.hasOwnProperty(dataset_id) ) {
         var dataset = self.datasets[dataset_id];
-
-        if( !dataset.syncRunning && dataset.config.sync_active) {
+        if(dataset && !dataset.syncRunning && (dataset.config.sync_active || dataset.syncForced)) {
           // Check to see if it is time for the sync loop to run again
           var lastSyncStart = dataset.syncLoopStart;
           var lastSyncCmp = dataset.syncLoopEnd;
-          if( lastSyncStart == null ) {
+          if(dataset.syncForced){
+            dataset.syncPending = true;
+          } else if( lastSyncStart == null ) {
             self.consoleLog(dataset_id +' - Performing initial sync');
             // Dataset has never been synced before - do initial sync
             dataset.syncPending = true;
@@ -10000,8 +10200,6 @@ var self = {
               // Time between sync loops has passed - do another sync
               dataset.syncPending = true;
             }
-          } else if( dataset.syncForced ) {
-            dataset.syncPending = true;
           }
 
           if( dataset.syncPending ) {
@@ -10019,38 +10217,49 @@ var self = {
   },
 
   checkHasCustomSync : function(dataset_id, cb) {
-    if(self.hasCustomSync != null) {
+    var dataset = self.datasets[dataset_id];
+    if(dataset && dataset.config){
+      self.consoleLog("dataset.config.has_custom_sync = " + dataset.config.has_custom_sync);
+      if(dataset.config.has_custom_sync != null) {
+        return cb();
+      }
+      self.consoleLog('starting check has custom sync');
+
+      actAPI({
+        'act' : dataset_id,
+        'req': {
+          'fn': 'sync'
+        }
+      }, function(res) {
+        //if the custom sync is defined in the cloud, this call should success.
+        //if failed, we think this the custom sync is not defined
+        self.consoleLog('check has_custom_sync - success - ', res);
+        dataset.config.has_custom_sync = true;
+        return cb();
+      }, function(msg,err) {
+        self.consoleLog('check has_custom_sync - failure - ', err);
+        if(err.status && err.status === 500){
+          //if we receive 500, it could be that there is an error occured due to missing parameters or similar,
+          //but the endpoint is defined.
+          self.consoleLog('check has_custom_sync - failed with 500, endpoint does exists');
+          dataset.config.has_custom_sync = true;
+        } else {
+          dataset.config.has_custom_sync = false;
+        }
+        return cb();
+      });
+    } else {
       return cb();
     }
-    self.consoleLog('starting check has custom sync');
-
-    actAPI({
-      'act' : dataset_id,
-      'req': {
-        'fn': 'sync'
-      }
-    }, function(res) {
-      //if the custom sync is defined in the cloud, this call should success.
-      //if failed, we think this the custom sync is not defined
-      self.consoleLog('checkHasCustomSync - success - ', res);
-      self.hasCustomSync = true;
-      return cb();
-    }, function(msg,err) {
-      self.consoleLog('checkHasCustomSync - failure - ', err);
-      if(err.status && err.status === 500){
-        //if we receive 500, it could be that there is an error occured due to missing parameters or similar,
-        //but the endpoint is defined.
-        self.consoleLog('checkHasCustomSync - failed with 500, endpoint does exists');
-        self.hasCustomSync = true;
-      } else {
-        self.hasCustomSync = false;
-      }
-      return cb();
-    });
   },
 
   doCloudCall: function(params, success, failure) {
-    if( self.hasCustomSync ) {
+    var hasCustomSync = false;
+    var dataset = self.datasets[params.dataset_id];
+    if(dataset && dataset.config){
+      hasCustomSync = dataset.config.has_custom_sync;
+    }
+    if( hasCustomSync == true ) {
       actAPI({
         'act' : params.dataset_id,
         'req' : params.req
@@ -10068,7 +10277,7 @@ var self = {
         success(res);
       }, function(msg, err) {
         failure(msg, err);
-      })
+      });
     }
   },
 
@@ -10081,17 +10290,21 @@ var self = {
     }, 500);
   },
 
-  saveDataSet: function (dataset_id, cb) {
-    var onFail =  function(msg, err) {
-      // save failed
-      var errMsg = 'save to local storage failed  msg:' + msg + ' err:' + err;
+  getStorageAdapter: function(dataset_id, isSave, cb){
+    var onFail = function(msg, err){
+      var errMsg = (isSave?'save to': 'load from' ) + ' local storage failed msg: ' + msg + ' err: ' + err;
       self.doNotify(dataset_id, null, self.notifications.CLIENT_STORAGE_FAILED, errMsg);
       self.consoleLog(errMsg);
     };
+    Lawnchair({fail:onFail, adapter: self.config.storage_strategy, size:self.config.file_system_quota, backup: self.config.icloud_backup}, function(){
+      return cb(null, this);
+    });
+  },
+
+  saveDataSet: function (dataset_id, cb) {
     self.getDataSet(dataset_id, function(dataset) {
-      // save dataset to local storage
-      Lawnchair({fail:onFail, adapter: self.config.storage_strategy, size:self.config.file_system_quota}, function (){
-        this.save({key:"dataset_" + dataset_id, val:dataset}, function(){
+      self.getStorageAdapter(dataset_id, true, function(err, storage){
+        storage.save({key:"dataset_" + dataset_id, val:dataset}, function(){
           //save success
           if(cb) return cb();
         });
@@ -10100,34 +10313,39 @@ var self = {
   },
 
   loadDataSet: function (dataset_id, success, failure) {
-    // load dataset from local storage
-    var onFail = function(msg, err) {
-      // load failed
-      var errMsg = 'load from local storage failed  msg:' + msg;
-      self.doNotify(dataset_id, null, self.notifications.CLIENT_STORAGE_FAILED, errMsg);
-      self.consoleLog(errMsg);
-    };
-
-        Lawnchair({fail:onFail, adapter: self.config.storage_strategy, size:self.config.file_system_quota},function (){       this.get( "dataset_" + dataset_id, function (data){
-         if (data && data.val !== null) {
-            var dataset = data.val;
-            if(typeof dataset === "string"){
-              dataset = JSON.parse(dataset);
-            }
-            // Datasets should not be auto initialised when loaded - the mange function should be called for each dataset
-            // the user wants sync
-            dataset.initialised = false;
-            self.datasets[dataset_id] = dataset; // TODO: do we need to handle binary data?
-            self.consoleLog('load from local storage success for dataset_id :' + dataset_id);
-            if(success) return success(dataset);
-          } else {
-            // no data yet, probably first time. failure calback should handle this
-            if(failure) return failure();
+    self.getStorageAdapter(dataset_id, false, function(err, storage){
+      storage.get( "dataset_" + dataset_id, function (data){
+        if (data && data.val) {
+          var dataset = data.val;
+          if(typeof dataset === "string"){
+            dataset = JSON.parse(dataset);
           }
-       });
+          // Datasets should not be auto initialised when loaded - the mange function should be called for each dataset
+          // the user wants sync
+          dataset.initialised = false;
+          self.datasets[dataset_id] = dataset; // TODO: do we need to handle binary data?
+          self.consoleLog('load from local storage success for dataset_id :' + dataset_id);
+          if(success) return success(dataset);
+        } else {
+          // no data yet, probably first time. failure calback should handle this
+          if(failure) return failure();
+        }
+      });
     });
   },
 
+  clearCache: function(dataset_id, cb){
+    delete self.datasets[dataset_id];
+    self.notify_callback_map[dataset_id] === null;
+    self.getStorageAdapter(dataset_id, true, function(err, storage){
+      storage.remove("dataset_" + dataset_id, function(){
+        self.consoleLog('local cache is cleared for dataset : ' + dataset_id);
+        if(cb){
+          return cb();
+        }
+      });
+    });
+  },
 
   updateDatasetFromLocal: function(dataset, pendingRec) {
     var pending = dataset.pending;
@@ -10463,15 +10681,6 @@ var self = {
               }
             }
           }
-          else if (!pendingRec.inFlight && pendingRec.crashed ) {
-            self.consoleLog('updateCrashedInFlightFromNewData - Trying to resolve issues with crashed non in flight record - uid = ' + pendingRec.uid);
-            // Stalled pending record because a previous pending update on the same record crashed
-            var crashedRef = resolvedCrashes[pendingRec.uid];
-            if( crashedRef ) {
-              self.consoleLog('updateCrashedInFlightFromNewData - Found a stalled pending record backed up behind a resolved crash uid=' + pendingRec.uid + ' :: hash=' + pendingRec.hash);
-              pendingRec.crashed = false;
-            }
-          }
         }
       }
     }
@@ -10501,6 +10710,50 @@ var self = {
     }
   },
 
+  updateMetaFromNewData: function(dataset_id, dataset, newData){
+    var meta = dataset.meta;
+    if(meta && newData && newData.updates && newData.updates.hashes){
+      for(var uid in meta){
+        if(meta.hasOwnProperty(uid)){
+          var metadata = meta[uid];
+          var pendingHash = metadata.pendingUid;
+          var previousPendingHash = metadata.previousPendingUid;
+          self.consoleLog("updateMetaFromNewData - Found metadata with uid = " + uid + " :: pendingHash = " + pendingHash + " :: previousPendingHash =" + previousPendingHash);
+          var previousPendingResolved = true;
+          var pendingResolved = true;
+          if(previousPendingHash){
+            //we have previous pending in meta data, see if it's resolved
+            previousPendingResolved = false;
+            var resolved = newData.updates.hashes[previousPendingHash];
+            if(resolved){
+              self.consoleLog("updateMetaFromNewData - Found previousPendingUid in meta data resolved - resolved = " + JSON.stringify(resolved));
+              //the previous pending is resolved in the cloud
+              metadata.previousPendingUid = undefined;
+              previousPendingResolved = true;
+            }
+          }
+          if(pendingHash){
+            //we have current pending in meta data, see if it's resolved
+            pendingResolved = false;
+            var resolved = newData.updates.hashes[pendingHash];
+            if(resolved){
+              self.consoleLog("updateMetaFromNewData - Found pendingUid in meta data resolved - resolved = " + JSON.stringify(resolved));
+              //the current pending is resolved in the cloud
+              metadata.pendingUid = undefined;
+              pendingResolved = true;
+            }
+          }
+
+          if(previousPendingResolved && pendingResolved){
+            self.consoleLog("updateMetaFromNewData - both previous and current pendings are resolved for meta data with uid " + uid + ". Delete it.");
+            //all pendings are resolved, the entry can be removed from meta data
+            delete meta[uid];
+          }
+        }
+      }
+    }
+  },
+
 
   markInFlightAsCrashed : function(dataset) {
     var pending = dataset.pending;
@@ -10520,21 +10773,6 @@ var self = {
           }
         }
       }
-
-      // Check for any pending updates that would be modifying a crashed record. These can not go out until the
-      // status of the crashed record is determined
-      for( pendingHash in pending ) {
-        if( pending.hasOwnProperty(pendingHash) ) {
-          pendingRec = pending[pendingHash];
-
-          if( ! pendingRec.inFlight && ! pendingRec.delayed ) {
-            var crashedRef = crashedRecords[pendingRec.uid];
-            if( crashedRef ) {
-              pendingRec.crashed = true;
-            }
-          }
-        }
-      }
     }
   },
 
@@ -10548,7 +10786,7 @@ var self = {
 (function() {
   self.config = self.defaults;
   //Initialse the sync service with default config
-  self.init({});
+  //self.init({});
 })();
 
 module.exports = {
@@ -10574,9 +10812,13 @@ module.exports = {
   startSync: self.startSync,
   stopSync: self.stopSync,
   doSync: self.doSync,
-  forceSync: self.forceSync
+  forceSync: self.forceSync,
+  generateHash: self.generateHash,
+  loadDataSet: self.loadDataSet,
+  checkHasCustomSync: self.checkHasCustomSync,
+  clearCache: self.clearCache
 };
-},{"../../libs/generated/crypto":1,"../../libs/generated/lawnchair":2,"./api_act":19,"./api_cloud":21,"JSON":3}],47:[function(_dereq_,module,exports){
+},{"../../libs/generated/crypto":1,"../../libs/generated/lawnchair":2,"./api_act":19,"./api_cloud":21,"JSON":3}],46:[function(_dereq_,module,exports){
 module.exports = {
   createUUID : function () {
     //from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
@@ -10593,7 +10835,7 @@ module.exports = {
   }
 };
 
-},{}],48:[function(_dereq_,module,exports){
+},{}],47:[function(_dereq_,module,exports){
 var initializer = _dereq_("./initializer");
 var events = _dereq_("./events");
 var CloudHost = _dereq_("./hosts");
@@ -10618,18 +10860,26 @@ var ready = function(cb){
     });
     if(!is_initialising){
       is_initialising = true;
-      initializer.init(function(err, initRes){
-        is_initialising = false;
-        if(err){
-          init_error = err;
-          return events.emit(constants.INIT_EVENT, err);
-        } else {
-          init_error = null;
-          is_cloud_ready = true;
-          cloud_host = new CloudHost(initRes.cloud);
-          return events.emit(constants.INIT_EVENT, null, {host: getCloudHostUrl()});
-        }
-      });
+      var fhinit = function(){
+        initializer.init(function(err, initRes){
+          is_initialising = false;
+          if(err){
+            init_error = err;
+            return events.emit(constants.INIT_EVENT, err);
+          } else {
+            init_error = null;
+            is_cloud_ready = true;
+            cloud_host = new CloudHost(initRes.cloud);
+            return events.emit(constants.INIT_EVENT, null, {host: getCloudHostUrl()});
+          }
+        });
+      }
+      if(typeof window.cordova !== "undefined" || typeof window.phonegap !== "undefined"){
+        //if we are running inside cordova/phonegap, only init after device is ready to ensure the device id is the right one
+        document.addEventListener("deviceready", fhinit, false);
+      } else {
+        fhinit();
+      }
     }
   }
 }
@@ -10686,6 +10936,6 @@ module.exports = {
   getInitError: getInitError,
   reset: reset
 }
-},{"./appProps":25,"./constants":27,"./events":30,"./hosts":34,"./initializer":35,"./logger":38}]},{},[16])
+},{"./appProps":25,"./constants":27,"./events":30,"./hosts":33,"./initializer":34,"./logger":37}]},{},[16])
 (16)
 });
