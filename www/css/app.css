@@ -90,9 +90,9 @@ footer > div > small {
 }
 
 .say-hello-button {
-    width: 90%;
+    width: 100%;
 
-    margin: 5px 5px 5px 5px;
+    margin: 5px 0px 5px 0px;
     padding: 5px 5px 5px 5px;
     font-size: 1.6em;
     background-color: #4a87ee;
@@ -101,9 +101,17 @@ footer > div > small {
 }
 
 .input-text{
-    margin: 5px 5px 5px 5px;
+    width: 100%;
 
-    width: 90%;
-    background-color: #EEEEEE;
     font-size: 2em;
+    margin: 0px;
+    padding: 0px 0px 0px 5px;
+    border: 1px solid #000000;
+    box-sizing: border-box;
+}
+
+.input-div {
+    width: 100%;
+
+    padding: 5px 0px 5px 0px;
 }
