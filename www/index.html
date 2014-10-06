@@ -1,23 +1,29 @@
 <!DOCTYPE html>
   <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hello World</title>
-
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <!-- Bootsrap JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
     <style>
     body { font-family: "Helvetica Neue", Helvetica, sans-serif; }
     </style>
   </head>
 
   <body>
-    <h2>Hello World</h2>
+    <div class="container">
+      <h2>Hello World</h2>
 
-    <p> Click on the button below to say hello via the cloud</p>
+      <p> Click on the button below to say hello via the cloud</p>
 
-    <input id='hello_to' type="text" name="name" value="World"><br>
-    <button id='say_hello'> Say Hello</button>
+      <input id='hello_to' type="text" name="name" value="World"></br></br>
+      <button type="button" class="btn btn-default" id='say_hello'> Say Hello</button>
 
-    <div id="cloudResponse"></div>
+      <div id="cloudResponse"></div>
 
-    <script src="feedhenry.js"></script>
-    <script src="hello.js"></script>
+      <script src="feedhenry.js"></script>
+      <script src="hello.js"></script>
+    </div>
   </body>
 </html>
