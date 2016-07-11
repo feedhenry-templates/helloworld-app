@@ -4,45 +4,38 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
-    <title>Hello World</title>
+    <title>Hello Lists</title>
 
     <link rel="stylesheet" href="css/app.css">
   </head>
 
   <body>
   <header class="header-footer-bg">
-      <div class="center">
+      
           <h3>FeedHenry
-              <small>QuickStart - HTML5</small>
+              <small>Todo List</small>
           </h3>
-      </div>
+      
+      <a class="add" id="addLink" href="#">+</a>
   </header>
 
   <div id="count" class="">
       <div id="formWrapper">
-          <p id="description">This is a basic Javascript App that can take in your name, send it to a cloud app and display the response.</p>
-          <br>
-
-          <div class="input-div">
-              <input id="hello_to" type="text" class="input-text" placeholder="Enter Your Name Here."/>
-          </div>
-
-          <br>
-
-          <button id="say_hello" type="button" class="say-hello-button">Say Hello From The Cloud</button>
-          <div id="cloudResponse" class="cloudResponse"></div>
+          
+          <ul id="todoList">
+            
+          </ul>
       </div>
   </div>
-
-      <footer class="header-footer-bg">
-          <div>
-              <small class="right">
-                  <!-- v.&nbsp;{{ version }} -->
-              </small>
-          </div>
-      </footer>
-
-    <script src="feedhenry.js"></script>
-    <script src="hello.js"></script>
+    
+  <script type="text/template" id="listItem">
+    <li id="{{id}}">{{name}}<input type="checkbox"></input></li>
+  </script>
+  <script type="text/template" id="listEditItem">
+    <li id="{{id}}" class="editing"><input id="todoInput" name="todoItem" placeholder="Enter your Todo" value="{{name}}"></li>
+  </script>
+  <script type="text/javascript" src="feedhenry.js"></script>
+  <script type="text/javascript" src="dom.js"></script>
+  <script type="text/javascript" src="hello.js"></script>
   </body>
 </html>

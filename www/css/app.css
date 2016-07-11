@@ -14,104 +14,92 @@
 body {
     font-size: 12px;
     font-family: OS-Light;
+    margin: 0px;
 }
 #app {
     width: inherit;
     height: inherit;
 }
 #count {
-    margin-top:50px;
+    margin-top:60px;
 }
 header {
-    position: absolute;
+    position: fixed;
+    z-index: 1000;
     top:0;
     left: 0;
     width: 100%;
+    display: flex;
 }
-.center > h3 {
+
+header > h3 {
     color: #ffffff;
+    text-align: center;
     letter-spacing: 2px;
     font-family: OS-Light;
     font-size: 1.5em;
+    display: inline-block;
+    flex-grow: 1;
 }
-.center > h3 > small {
-    color: #ffffff;
+
+header a.add {
+  font-size: 30px;
+  margin: 16px 8px 0 0;
+  text-decoration: none;
+  width: 33px;
+  height: 33px;
+  border-radius: 100%;
+  text-align: center;
+  font-weight: bold;
+  padding-top: 0px;
+  line-height: 33px;
+  background-color: red;
+  color: white;
+}
+
+header > h3 > small {
+    color: #efefef;
     letter-spacing: 2px;
     font-family: OS-Light;
 }
 .header-footer-bg {
-    background-color: #7ea1b6;
-}
-footer {
-    position: absolute;
-    bottom:0;
-    left: 0;
-    width: 100%;
-    height: 5%;
-    color: #ffffff;
-}
-footer > div > small {
-    padding-top: 8px;
-    padding-right: 10px;
-}
-.left {
-    float: left;
-}
-.right {
-    float: right;
-}
-.clear {
-    clear: both;
-}
-.center {
-    text-align: center;
+    background-color: #333;
 }
 
-
-/*
- *  CUSTOM STYLING
- */
-
-#description {
-    text-align: justify;
-    position: relative;
-    padding-top: 40px;
-    font-size: 1.5em;
-}
-.input-group {
-    display: block;
+ul {
+  list-style: none;
+  padding: 0px;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
 }
 
-.cloudResponse {
-    font-size: 2em;
-
-    font-weight: bold;
-    text-align: center;
+ul li {
+  font-size: 16px;
+  color: #666;
+  width: 95%;
+  border: 1px solid #eee;
+  border-top: 1px;
+  border-right: 0px;
+  border-left: 0px;
+  padding: 8px 0 8px 12px;  
+  min-height: 22px;
 }
 
-.say-hello-button {
-    width: 100%;
-
-    margin: 5px 0px 5px 0px;
-    padding: 5px 5px 5px 5px;
-    font-size: 1.6em;
-    background-color: #4a87ee;
-    border: 1px solid #216CEC;
-    color: #fff;
+ul li:first-of-type {
+  border-top: 1px;
 }
 
-.input-text{
-    width: 100%;
-
-    font-size: 2em;
-    margin: 0px;
-    padding: 0px 0px 0px 5px;
-    border: 1px solid #000000;
-    box-sizing: border-box;
+ul li input[type=checkbox]  {
+  float: right;
 }
 
-.input-div {
-    width: 100%;
+ul li.editing {
+  padding: 0px;
+}
 
-    padding: 5px 0px 5px 0px;
+ul li.editing input {
+  padding : padding: 8px 0 8px 12px;
+  width: 100%;
+  min-height: 22px;
+  font-size: 15px;
 }
