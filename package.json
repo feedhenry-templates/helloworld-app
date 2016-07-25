@@ -22,7 +22,7 @@
     "node": ">=0.8.0"
   },
   "scripts": {
-    "install": "grunt browserify"
+    "postinstall": "grunt browserify"
   },
   "license": "mit"
 }
