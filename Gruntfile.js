@@ -21,7 +21,7 @@ module.exports = function (grunt) {
     // Project settings
     app: {
       // configurable paths
-      app: '.',
+      app: 'www',
       url: '',
       default_local_server_url: 'http://localhost:8001'
     },
@@ -78,10 +78,6 @@ module.exports = function (grunt) {
     // Empties folders to start fresh
     clean: {
       server: '.tmp'
-    },
-
-    browserify: {
-      'main.js': ['js/*.js']
     }
   });
 
@@ -97,7 +93,6 @@ module.exports = function (grunt) {
     }
 
     grunt.task.run([
-      'browserify',
       'clean:server',
       'connect:livereload',
       'watch'
@@ -105,5 +100,4 @@ module.exports = function (grunt) {
   });
 
   grunt.registerTask('default', ['serve']);
-  grunt.loadNpmTasks('grunt-browserify');
 };
