@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "fh-js-sdk": "^2.14.4"
+    "fh-js-sdk": "^2.17.1"
   },
   "devDependencies": {
     "browserify": "^13.0.1",
