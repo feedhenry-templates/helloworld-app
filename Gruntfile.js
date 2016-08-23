@@ -81,7 +81,7 @@ module.exports = function (grunt) {
     },
 
     browserify: {
-      'www/main.js': ['www/js/app.js']
+      'www/main.js': ['www/js/init.js']
     }
   });
 
