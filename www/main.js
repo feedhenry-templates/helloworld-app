@@ -1,8 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-// exposes broserified npm dependencies into global varaibles
-
-window.$fh = require('fh-js-sdk');
-},{"fh-js-sdk":2}],2:[function(require,module,exports){
 (function (global){
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.feedhenry=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 (function (global){
@@ -10625,7 +10621,7 @@ function doActCall(opts, success, fail){
   }
   return ajax({
     "url": url,
-    "tryJSONP": typeof Titanium === 'undefined',
+    "tryJSONP": true,
     "type": "POST",
     "dataType": "json",
     "data": JSON.stringify(params),
@@ -10683,7 +10679,7 @@ function callAuthEndpoint(endpoint, data, opts, success, fail){
   ajax({
     "url": path,
     "type": "POST",
-    "tryJSONP": typeof Titanium === 'undefined',
+    "tryJSONP": true,
     "data": JSON.stringify(data),
     "dataType": "json",
     "contentType": "application/json",
@@ -10889,7 +10885,7 @@ module.exports = function(opts, success, fail){
       params = fhparams.addFHParams(params);
       return ajax({
         "url": url,
-        "tryJSONP": typeof Titanium === 'undefined',
+        "tryJSONP": true,
         "type": "POST",
         "dataType": "json",
         "data": JSON.stringify(params),
@@ -10999,7 +10995,7 @@ var load = function(cb) {
   for(var key in url_params){
     if(url_params.hasOwnProperty(key) ){
       if(key.indexOf('fh_') === 0){
-        url_props[key.substr(3)] = url_params[key]; 
+        url_props[key.substr(3)] = decodeURI(url_params[key]); 
       }
     }
   }
@@ -11182,7 +11178,7 @@ module.exports = {
 },{"./data":33,"./fhparams":36,"./logger":42,"./queryMap":44}],31:[function(_dereq_,module,exports){
 module.exports = {
   "boxprefix": "/box/srv/1.1/",
-  "sdk_version": "2.14.4",
+  "sdk_version": "2.17.0",
   "config_js": "fhconfig.json",
   "INIT_EVENT": "fhinit",
   "INTERNAL_CONFIG_LOADED_EVENT": "internalfhconfigloaded",
@@ -11226,7 +11222,7 @@ var data = {
   //dom adapter doens't work on windows phone, so don't specify the adapter if the dom one failed
   //we specify the order of lawnchair adapters to use, lawnchair will find the right one to use, to keep backward compatibility, keep the order
   //as dom, webkit-sqlite, localFileStorage, window-name
-  DEFAULT_ADAPTERS : ["dom", "webkit-sqlite", "window-name"],
+  DEFAULT_ADAPTERS : ["dom", "webkit-sqlite", "window-name", "titanium"],
   getStorage: function(name, adapters, fail){
     var adpts = data.DEFAULT_ADAPTERS;
     var errorHandler = fail || function(){};
@@ -11281,6 +11277,7 @@ var data = {
 };
 
 module.exports = data;
+
 },{"../../libs/generated/lawnchair":2,"./constants":31,"./lawnchair-ext":40,"./logger":42}],34:[function(_dereq_,module,exports){
 var cookies = _dereq_("./cookies");
 var uuidModule = _dereq_("./uuid");
@@ -11628,7 +11625,7 @@ var loadCloudProps = function(app_props, callback) {
     ajax({
       "url": path,
       "type": "POST",
-      "tryJSONP": typeof Titanium === 'undefined',
+      "tryJSONP": true,
       "dataType": "json",
       "contentType": "application/json",
       "data": JSON.stringify(data),
@@ -13574,4 +13571,8 @@ module.exports = {
 (19)
 });
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[1]);
+},{}],2:[function(require,module,exports){
+// exposes broserified npm dependencies into global varaibles
+
+window.$fh = require('fh-js-sdk');
+},{"fh-js-sdk":1}]},{},[2]);
