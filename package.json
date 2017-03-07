@@ -3,23 +3,21 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "fh-js-sdk": "^2.18.3",
-    "browserify": "^13.0.1",
-    "browserify-shim": "^3.8.12",
-    "grunt": "^0.4.4",
-    "grunt-browserify": "^5.0.0",
-    "grunt-cli": "^1.2.0",
+    "fh-js-sdk": "~2.18.4",
+    "browserify": "~13.3.0",
+    "browserify-shim": "~3.8.13",
+    "grunt": "~0.4.5",
+    "grunt-browserify": "~5.0.0",
+    "grunt-cli": "~1.2.0",
     "grunt-contrib-clean": "~0.5.0",
-    "grunt-contrib-connect": "^0.7.1",
-    "grunt-contrib-watch": "^0.6.1",
+    "grunt-contrib-connect": "~0.7.1",
+    "grunt-contrib-watch": "~0.6.1",
     "grunt-newer": "~0.5.4",
     "grunt-rev": "~0.1.0",
-    "load-grunt-tasks": "~0.2.0",
-    "time-grunt": "~0.2.1"
+    "load-grunt-tasks": "~0.2.1",
+    "time-grunt": "~0.2.10"
   },
-  "devDependencies": {
-
-  },
+  "devDependencies": {},
   "engines": {
     "node": ">=0.8.0"
   },
