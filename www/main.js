@@ -5916,7 +5916,7 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-},{"util/":18}],5:[function(_dereq_,module,exports){
+},{"util/":29}],5:[function(_dereq_,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -6070,7 +6070,7 @@ function assert(expression) {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"assert":4,"util":18}],7:[function(_dereq_,module,exports){
+},{"assert":4,"util":29}],7:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6374,6 +6374,3598 @@ function isUndefined(arg) {
 }
 
 },{}],8:[function(_dereq_,module,exports){
+(function (global){
+;__browserify_shim_require__=_dereq_;(function browserifyShim(module, exports, _dereq_, define, browserify_shim__define__module__export__) {
+/*
+ CryptoJS v3.1.2
+ core.js
+ code.google.com/p/crypto-js
+ (c) 2009-2013 by Jeff Mott. All rights reserved.
+ code.google.com/p/crypto-js/wiki/License
+ */
+/**
+ * CryptoJS core components.
+ */
+var CryptoJS = CryptoJS || (function (Math, undefined) {
+  /**
+   * CryptoJS namespace.
+   */
+  var C = {};
+
+  /**
+   * Library namespace.
+   */
+  var C_lib = C.lib = {};
+
+  /**
+   * Base object for prototypal inheritance.
+   */
+  var Base = C_lib.Base = (function () {
+    function F() {}
+
+    return {
+      /**
+       * Creates a new object that inherits from this object.
+       *
+       * @param {Object} overrides Properties to copy into the new object.
+       *
+       * @return {Object} The new object.
+       *
+       * @static
+       *
+       * @example
+       *
+       *     var MyType = CryptoJS.lib.Base.extend({
+             *         field: 'value',
+             *
+             *         method: function () {
+             *         }
+             *     });
+       */
+      extend: function (overrides) {
+        // Spawn
+        F.prototype = this;
+        var subtype = new F();
+
+        // Augment
+        if (overrides) {
+          subtype.mixIn(overrides);
+        }
+
+        // Create default initializer
+        if (!subtype.hasOwnProperty('init')) {
+          subtype.init = function () {
+            subtype.$super.init.apply(this, arguments);
+          };
+        }
+
+        // Initializer's prototype is the subtype object
+        subtype.init.prototype = subtype;
+
+        // Reference supertype
+        subtype.$super = this;
+
+        return subtype;
+      },
+
+      /**
+       * Extends this object and runs the init method.
+       * Arguments to create() will be passed to init().
+       *
+       * @return {Object} The new object.
+       *
+       * @static
+       *
+       * @example
+       *
+       *     var instance = MyType.create();
+       */
+      create: function () {
+        var instance = this.extend();
+        instance.init.apply(instance, arguments);
+
+        return instance;
+      },
+
+      /**
+       * Initializes a newly created object.
+       * Override this method to add some logic when your objects are created.
+       *
+       * @example
+       *
+       *     var MyType = CryptoJS.lib.Base.extend({
+             *         init: function () {
+             *             // ...
+             *         }
+             *     });
+       */
+      init: function () {
+      },
+
+      /**
+       * Copies properties into this object.
+       *
+       * @param {Object} properties The properties to mix in.
+       *
+       * @example
+       *
+       *     MyType.mixIn({
+             *         field: 'value'
+             *     });
+       */
+      mixIn: function (properties) {
+        for (var propertyName in properties) {
+          if (properties.hasOwnProperty(propertyName)) {
+            this[propertyName] = properties[propertyName];
+          }
+        }
+
+        // IE won't copy toString using the loop above
+        if (properties.hasOwnProperty('toString')) {
+          this.toString = properties.toString;
+        }
+      },
+
+      /**
+       * Creates a copy of this object.
+       *
+       * @return {Object} The clone.
+       *
+       * @example
+       *
+       *     var clone = instance.clone();
+       */
+      clone: function () {
+        return this.init.prototype.extend(this);
+      }
+    };
+  }());
+
+  /**
+   * An array of 32-bit words.
+   *
+   * @property {Array} words The array of 32-bit words.
+   * @property {number} sigBytes The number of significant bytes in this word array.
+   */
+  var WordArray = C_lib.WordArray = Base.extend({
+    /**
+     * Initializes a newly created word array.
+     *
+     * @param {Array} words (Optional) An array of 32-bit words.
+     * @param {number} sigBytes (Optional) The number of significant bytes in the words.
+     *
+     * @example
+     *
+     *     var wordArray = CryptoJS.lib.WordArray.create();
+     *     var wordArray = CryptoJS.lib.WordArray.create([0x00010203, 0x04050607]);
+     *     var wordArray = CryptoJS.lib.WordArray.create([0x00010203, 0x04050607], 6);
+     */
+    init: function (words, sigBytes) {
+      words = this.words = words || [];
+
+      if (sigBytes != undefined) {
+        this.sigBytes = sigBytes;
+      } else {
+        this.sigBytes = words.length * 4;
+      }
+    },
+
+    /**
+     * Converts this word array to a string.
+     *
+     * @param {Encoder} encoder (Optional) The encoding strategy to use. Default: CryptoJS.enc.Hex
+     *
+     * @return {string} The stringified word array.
+     *
+     * @example
+     *
+     *     var string = wordArray + '';
+     *     var string = wordArray.toString();
+     *     var string = wordArray.toString(CryptoJS.enc.Utf8);
+     */
+    toString: function (encoder) {
+      return (encoder || Hex).stringify(this);
+    },
+
+    /**
+     * Concatenates a word array to this word array.
+     *
+     * @param {WordArray} wordArray The word array to append.
+     *
+     * @return {WordArray} This word array.
+     *
+     * @example
+     *
+     *     wordArray1.concat(wordArray2);
+     */
+    concat: function (wordArray) {
+      // Shortcuts
+      var thisWords = this.words;
+      var thatWords = wordArray.words;
+      var thisSigBytes = this.sigBytes;
+      var thatSigBytes = wordArray.sigBytes;
+
+      // Clamp excess bits
+      this.clamp();
+
+      // Concat
+      if (thisSigBytes % 4) {
+        // Copy one byte at a time
+        for (var i = 0; i < thatSigBytes; i++) {
+          var thatByte = (thatWords[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+          thisWords[(thisSigBytes + i) >>> 2] |= thatByte << (24 - ((thisSigBytes + i) % 4) * 8);
+        }
+      } else if (thatWords.length > 0xffff) {
+        // Copy one word at a time
+        for (var i = 0; i < thatSigBytes; i += 4) {
+          thisWords[(thisSigBytes + i) >>> 2] = thatWords[i >>> 2];
+        }
+      } else {
+        // Copy all words at once
+        thisWords.push.apply(thisWords, thatWords);
+      }
+      this.sigBytes += thatSigBytes;
+
+      // Chainable
+      return this;
+    },
+
+    /**
+     * Removes insignificant bits.
+     *
+     * @example
+     *
+     *     wordArray.clamp();
+     */
+    clamp: function () {
+      // Shortcuts
+      var words = this.words;
+      var sigBytes = this.sigBytes;
+
+      // Clamp
+      words[sigBytes >>> 2] &= 0xffffffff << (32 - (sigBytes % 4) * 8);
+      words.length = Math.ceil(sigBytes / 4);
+    },
+
+    /**
+     * Creates a copy of this word array.
+     *
+     * @return {WordArray} The clone.
+     *
+     * @example
+     *
+     *     var clone = wordArray.clone();
+     */
+    clone: function () {
+      var clone = Base.clone.call(this);
+      clone.words = this.words.slice(0);
+
+      return clone;
+    },
+
+    /**
+     * Creates a word array filled with random bytes.
+     *
+     * @param {number} nBytes The number of random bytes to generate.
+     *
+     * @return {WordArray} The random word array.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var wordArray = CryptoJS.lib.WordArray.random(16);
+     */
+    random: function (nBytes) {
+      var words = [];
+      for (var i = 0; i < nBytes; i += 4) {
+        words.push((Math.random() * 0x100000000) | 0);
+      }
+
+      return new WordArray.init(words, nBytes);
+    }
+  });
+
+  /**
+   * Encoder namespace.
+   */
+  var C_enc = C.enc = {};
+
+  /**
+   * Hex encoding strategy.
+   */
+  var Hex = C_enc.Hex = {
+    /**
+     * Converts a word array to a hex string.
+     *
+     * @param {WordArray} wordArray The word array.
+     *
+     * @return {string} The hex string.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var hexString = CryptoJS.enc.Hex.stringify(wordArray);
+     */
+    stringify: function (wordArray) {
+      // Shortcuts
+      var words = wordArray.words;
+      var sigBytes = wordArray.sigBytes;
+
+      // Convert
+      var hexChars = [];
+      for (var i = 0; i < sigBytes; i++) {
+        var bite = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+        hexChars.push((bite >>> 4).toString(16));
+        hexChars.push((bite & 0x0f).toString(16));
+      }
+
+      return hexChars.join('');
+    },
+
+    /**
+     * Converts a hex string to a word array.
+     *
+     * @param {string} hexStr The hex string.
+     *
+     * @return {WordArray} The word array.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var wordArray = CryptoJS.enc.Hex.parse(hexString);
+     */
+    parse: function (hexStr) {
+      // Shortcut
+      var hexStrLength = hexStr.length;
+
+      // Convert
+      var words = [];
+      for (var i = 0; i < hexStrLength; i += 2) {
+        words[i >>> 3] |= parseInt(hexStr.substr(i, 2), 16) << (24 - (i % 8) * 4);
+      }
+
+      return new WordArray.init(words, hexStrLength / 2);
+    }
+  };
+
+  /**
+   * Latin1 encoding strategy.
+   */
+  var Latin1 = C_enc.Latin1 = {
+    /**
+     * Converts a word array to a Latin1 string.
+     *
+     * @param {WordArray} wordArray The word array.
+     *
+     * @return {string} The Latin1 string.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var latin1String = CryptoJS.enc.Latin1.stringify(wordArray);
+     */
+    stringify: function (wordArray) {
+      // Shortcuts
+      var words = wordArray.words;
+      var sigBytes = wordArray.sigBytes;
+
+      // Convert
+      var latin1Chars = [];
+      for (var i = 0; i < sigBytes; i++) {
+        var bite = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+        latin1Chars.push(String.fromCharCode(bite));
+      }
+
+      return latin1Chars.join('');
+    },
+
+    /**
+     * Converts a Latin1 string to a word array.
+     *
+     * @param {string} latin1Str The Latin1 string.
+     *
+     * @return {WordArray} The word array.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var wordArray = CryptoJS.enc.Latin1.parse(latin1String);
+     */
+    parse: function (latin1Str) {
+      // Shortcut
+      var latin1StrLength = latin1Str.length;
+
+      // Convert
+      var words = [];
+      for (var i = 0; i < latin1StrLength; i++) {
+        words[i >>> 2] |= (latin1Str.charCodeAt(i) & 0xff) << (24 - (i % 4) * 8);
+      }
+
+      return new WordArray.init(words, latin1StrLength);
+    }
+  };
+
+  /**
+   * UTF-8 encoding strategy.
+   */
+  var Utf8 = C_enc.Utf8 = {
+    /**
+     * Converts a word array to a UTF-8 string.
+     *
+     * @param {WordArray} wordArray The word array.
+     *
+     * @return {string} The UTF-8 string.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var utf8String = CryptoJS.enc.Utf8.stringify(wordArray);
+     */
+    stringify: function (wordArray) {
+      try {
+        return decodeURIComponent(escape(Latin1.stringify(wordArray)));
+      } catch (e) {
+        throw new Error('Malformed UTF-8 data');
+      }
+    },
+
+    /**
+     * Converts a UTF-8 string to a word array.
+     *
+     * @param {string} utf8Str The UTF-8 string.
+     *
+     * @return {WordArray} The word array.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var wordArray = CryptoJS.enc.Utf8.parse(utf8String);
+     */
+    parse: function (utf8Str) {
+      return Latin1.parse(unescape(encodeURIComponent(utf8Str)));
+    }
+  };
+
+  /**
+   * Abstract buffered block algorithm template.
+   *
+   * The property blockSize must be implemented in a concrete subtype.
+   *
+   * @property {number} _minBufferSize The number of blocks that should be kept unprocessed in the buffer. Default: 0
+   */
+  var BufferedBlockAlgorithm = C_lib.BufferedBlockAlgorithm = Base.extend({
+    /**
+     * Resets this block algorithm's data buffer to its initial state.
+     *
+     * @example
+     *
+     *     bufferedBlockAlgorithm.reset();
+     */
+    reset: function () {
+      // Initial values
+      this._data = new WordArray.init();
+      this._nDataBytes = 0;
+    },
+
+    /**
+     * Adds new data to this block algorithm's buffer.
+     *
+     * @param {WordArray|string} data The data to append. Strings are converted to a WordArray using UTF-8.
+     *
+     * @example
+     *
+     *     bufferedBlockAlgorithm._append('data');
+     *     bufferedBlockAlgorithm._append(wordArray);
+     */
+    _append: function (data) {
+      // Convert string to WordArray, else assume WordArray already
+      if (typeof data == 'string') {
+        data = Utf8.parse(data);
+      }
+
+      // Append
+      this._data.concat(data);
+      this._nDataBytes += data.sigBytes;
+    },
+
+    /**
+     * Processes available data blocks.
+     *
+     * This method invokes _doProcessBlock(offset), which must be implemented by a concrete subtype.
+     *
+     * @param {boolean} doFlush Whether all blocks and partial blocks should be processed.
+     *
+     * @return {WordArray} The processed data.
+     *
+     * @example
+     *
+     *     var processedData = bufferedBlockAlgorithm._process();
+     *     var processedData = bufferedBlockAlgorithm._process(!!'flush');
+     */
+    _process: function (doFlush) {
+      // Shortcuts
+      var data = this._data;
+      var dataWords = data.words;
+      var dataSigBytes = data.sigBytes;
+      var blockSize = this.blockSize;
+      var blockSizeBytes = blockSize * 4;
+
+      // Count blocks ready
+      var nBlocksReady = dataSigBytes / blockSizeBytes;
+      if (doFlush) {
+        // Round up to include partial blocks
+        nBlocksReady = Math.ceil(nBlocksReady);
+      } else {
+        // Round down to include only full blocks,
+        // less the number of blocks that must remain in the buffer
+        nBlocksReady = Math.max((nBlocksReady | 0) - this._minBufferSize, 0);
+      }
+
+      // Count words ready
+      var nWordsReady = nBlocksReady * blockSize;
+
+      // Count bytes ready
+      var nBytesReady = Math.min(nWordsReady * 4, dataSigBytes);
+
+      // Process blocks
+      if (nWordsReady) {
+        for (var offset = 0; offset < nWordsReady; offset += blockSize) {
+          // Perform concrete-algorithm logic
+          this._doProcessBlock(dataWords, offset);
+        }
+
+        // Remove processed words
+        var processedWords = dataWords.splice(0, nWordsReady);
+        data.sigBytes -= nBytesReady;
+      }
+
+      // Return processed words
+      return new WordArray.init(processedWords, nBytesReady);
+    },
+
+    /**
+     * Creates a copy of this object.
+     *
+     * @return {Object} The clone.
+     *
+     * @example
+     *
+     *     var clone = bufferedBlockAlgorithm.clone();
+     */
+    clone: function () {
+      var clone = Base.clone.call(this);
+      clone._data = this._data.clone();
+
+      return clone;
+    },
+
+    _minBufferSize: 0
+  });
+
+  /**
+   * Abstract hasher template.
+   *
+   * @property {number} blockSize The number of 32-bit words this hasher operates on. Default: 16 (512 bits)
+   */
+  var Hasher = C_lib.Hasher = BufferedBlockAlgorithm.extend({
+    /**
+     * Configuration options.
+     */
+    cfg: Base.extend(),
+
+    /**
+     * Initializes a newly created hasher.
+     *
+     * @param {Object} cfg (Optional) The configuration options to use for this hash computation.
+     *
+     * @example
+     *
+     *     var hasher = CryptoJS.algo.SHA256.create();
+     */
+    init: function (cfg) {
+      // Apply config defaults
+      this.cfg = this.cfg.extend(cfg);
+
+      // Set initial values
+      this.reset();
+    },
+
+    /**
+     * Resets this hasher to its initial state.
+     *
+     * @example
+     *
+     *     hasher.reset();
+     */
+    reset: function () {
+      // Reset data buffer
+      BufferedBlockAlgorithm.reset.call(this);
+
+      // Perform concrete-hasher logic
+      this._doReset();
+    },
+
+    /**
+     * Updates this hasher with a message.
+     *
+     * @param {WordArray|string} messageUpdate The message to append.
+     *
+     * @return {Hasher} This hasher.
+     *
+     * @example
+     *
+     *     hasher.update('message');
+     *     hasher.update(wordArray);
+     */
+    update: function (messageUpdate) {
+      // Append
+      this._append(messageUpdate);
+
+      // Update the hash
+      this._process();
+
+      // Chainable
+      return this;
+    },
+
+    /**
+     * Finalizes the hash computation.
+     * Note that the finalize operation is effectively a destructive, read-once operation.
+     *
+     * @param {WordArray|string} messageUpdate (Optional) A final message update.
+     *
+     * @return {WordArray} The hash.
+     *
+     * @example
+     *
+     *     var hash = hasher.finalize();
+     *     var hash = hasher.finalize('message');
+     *     var hash = hasher.finalize(wordArray);
+     */
+    finalize: function (messageUpdate) {
+      // Final message update
+      if (messageUpdate) {
+        this._append(messageUpdate);
+      }
+
+      // Perform concrete-hasher logic
+      var hash = this._doFinalize();
+
+      return hash;
+    },
+
+    blockSize: 512/32,
+
+    /**
+     * Creates a shortcut function to a hasher's object interface.
+     *
+     * @param {Hasher} hasher The hasher to create a helper for.
+     *
+     * @return {Function} The shortcut function.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var SHA256 = CryptoJS.lib.Hasher._createHelper(CryptoJS.algo.SHA256);
+     */
+    _createHelper: function (hasher) {
+      return function (message, cfg) {
+        return new hasher.init(cfg).finalize(message);
+      };
+    },
+
+    /**
+     * Creates a shortcut function to the HMAC's object interface.
+     *
+     * @param {Hasher} hasher The hasher to use in this HMAC helper.
+     *
+     * @return {Function} The shortcut function.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var HmacSHA256 = CryptoJS.lib.Hasher._createHmacHelper(CryptoJS.algo.SHA256);
+     */
+    _createHmacHelper: function (hasher) {
+      return function (message, key) {
+        return new C_algo.HMAC.init(hasher, key).finalize(message);
+      };
+    }
+  });
+
+  /**
+   * Algorithm namespace.
+   */
+  var C_algo = C.algo = {};
+
+  return C;
+}(Math));
+/*
+ CryptoJS v3.1.2
+ cipher-core
+ code.google.com/p/crypto-js
+ (c) 2009-2013 by Jeff Mott. All rights reserved.
+ code.google.com/p/crypto-js/wiki/License
+ */
+/**
+ * Cipher core components.
+ */
+CryptoJS.lib.Cipher || (function (undefined) {
+  // Shortcuts
+  var C = CryptoJS;
+  var C_lib = C.lib;
+  var Base = C_lib.Base;
+  var WordArray = C_lib.WordArray;
+  var BufferedBlockAlgorithm = C_lib.BufferedBlockAlgorithm;
+  var C_enc = C.enc;
+  var Utf8 = C_enc.Utf8;
+  var Base64 = C_enc.Base64;
+  var C_algo = C.algo;
+  var EvpKDF = C_algo.EvpKDF;
+
+  /**
+   * Abstract base cipher template.
+   *
+   * @property {number} keySize This cipher's key size. Default: 4 (128 bits)
+   * @property {number} ivSize This cipher's IV size. Default: 4 (128 bits)
+   * @property {number} _ENC_XFORM_MODE A constant representing encryption mode.
+   * @property {number} _DEC_XFORM_MODE A constant representing decryption mode.
+   */
+  var Cipher = C_lib.Cipher = BufferedBlockAlgorithm.extend({
+    /**
+     * Configuration options.
+     *
+     * @property {WordArray} iv The IV to use for this operation.
+     */
+    cfg: Base.extend(),
+
+    /**
+     * Creates this cipher in encryption mode.
+     *
+     * @param {WordArray} key The key.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @return {Cipher} A cipher instance.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var cipher = CryptoJS.algo.AES.createEncryptor(keyWordArray, { iv: ivWordArray });
+     */
+    createEncryptor: function (key, cfg) {
+      return this.create(this._ENC_XFORM_MODE, key, cfg);
+    },
+
+    /**
+     * Creates this cipher in decryption mode.
+     *
+     * @param {WordArray} key The key.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @return {Cipher} A cipher instance.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var cipher = CryptoJS.algo.AES.createDecryptor(keyWordArray, { iv: ivWordArray });
+     */
+    createDecryptor: function (key, cfg) {
+      return this.create(this._DEC_XFORM_MODE, key, cfg);
+    },
+
+    /**
+     * Initializes a newly created cipher.
+     *
+     * @param {number} xformMode Either the encryption or decryption transormation mode constant.
+     * @param {WordArray} key The key.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @example
+     *
+     *     var cipher = CryptoJS.algo.AES.create(CryptoJS.algo.AES._ENC_XFORM_MODE, keyWordArray, { iv: ivWordArray });
+     */
+    init: function (xformMode, key, cfg) {
+      // Apply config defaults
+      this.cfg = this.cfg.extend(cfg);
+
+      // Store transform mode and key
+      this._xformMode = xformMode;
+      this._key = key;
+
+      // Set initial values
+      this.reset();
+    },
+
+    /**
+     * Resets this cipher to its initial state.
+     *
+     * @example
+     *
+     *     cipher.reset();
+     */
+    reset: function () {
+      // Reset data buffer
+      BufferedBlockAlgorithm.reset.call(this);
+
+      // Perform concrete-cipher logic
+      this._doReset();
+    },
+
+    /**
+     * Adds data to be encrypted or decrypted.
+     *
+     * @param {WordArray|string} dataUpdate The data to encrypt or decrypt.
+     *
+     * @return {WordArray} The data after processing.
+     *
+     * @example
+     *
+     *     var encrypted = cipher.process('data');
+     *     var encrypted = cipher.process(wordArray);
+     */
+    process: function (dataUpdate) {
+      // Append
+      this._append(dataUpdate);
+
+      // Process available blocks
+      return this._process();
+    },
+
+    /**
+     * Finalizes the encryption or decryption process.
+     * Note that the finalize operation is effectively a destructive, read-once operation.
+     *
+     * @param {WordArray|string} dataUpdate The final data to encrypt or decrypt.
+     *
+     * @return {WordArray} The data after final processing.
+     *
+     * @example
+     *
+     *     var encrypted = cipher.finalize();
+     *     var encrypted = cipher.finalize('data');
+     *     var encrypted = cipher.finalize(wordArray);
+     */
+    finalize: function (dataUpdate) {
+      // Final data update
+      if (dataUpdate) {
+        this._append(dataUpdate);
+      }
+
+      // Perform concrete-cipher logic
+      var finalProcessedData = this._doFinalize();
+
+      return finalProcessedData;
+    },
+
+    keySize: 128/32,
+
+    ivSize: 128/32,
+
+    _ENC_XFORM_MODE: 1,
+
+    _DEC_XFORM_MODE: 2,
+
+    /**
+     * Creates shortcut functions to a cipher's object interface.
+     *
+     * @param {Cipher} cipher The cipher to create a helper for.
+     *
+     * @return {Object} An object with encrypt and decrypt shortcut functions.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var AES = CryptoJS.lib.Cipher._createHelper(CryptoJS.algo.AES);
+     */
+    _createHelper: (function () {
+      function selectCipherStrategy(key) {
+        if (typeof key == 'string') {
+          return PasswordBasedCipher;
+        } else {
+          return SerializableCipher;
+        }
+      }
+
+      return function (cipher) {
+        return {
+          encrypt: function (message, key, cfg) {
+            return selectCipherStrategy(key).encrypt(cipher, message, key, cfg);
+          },
+
+          decrypt: function (ciphertext, key, cfg) {
+            return selectCipherStrategy(key).decrypt(cipher, ciphertext, key, cfg);
+          }
+        };
+      };
+    }())
+  });
+
+  /**
+   * Abstract base stream cipher template.
+   *
+   * @property {number} blockSize The number of 32-bit words this cipher operates on. Default: 1 (32 bits)
+   */
+  var StreamCipher = C_lib.StreamCipher = Cipher.extend({
+    _doFinalize: function () {
+      // Process partial blocks
+      var finalProcessedBlocks = this._process(!!'flush');
+
+      return finalProcessedBlocks;
+    },
+
+    blockSize: 1
+  });
+
+  /**
+   * Mode namespace.
+   */
+  var C_mode = C.mode = {};
+
+  /**
+   * Abstract base block cipher mode template.
+   */
+  var BlockCipherMode = C_lib.BlockCipherMode = Base.extend({
+    /**
+     * Creates this mode for encryption.
+     *
+     * @param {Cipher} cipher A block cipher instance.
+     * @param {Array} iv The IV words.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var mode = CryptoJS.mode.CBC.createEncryptor(cipher, iv.words);
+     */
+    createEncryptor: function (cipher, iv) {
+      return this.Encryptor.create(cipher, iv);
+    },
+
+    /**
+     * Creates this mode for decryption.
+     *
+     * @param {Cipher} cipher A block cipher instance.
+     * @param {Array} iv The IV words.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var mode = CryptoJS.mode.CBC.createDecryptor(cipher, iv.words);
+     */
+    createDecryptor: function (cipher, iv) {
+      return this.Decryptor.create(cipher, iv);
+    },
+
+    /**
+     * Initializes a newly created mode.
+     *
+     * @param {Cipher} cipher A block cipher instance.
+     * @param {Array} iv The IV words.
+     *
+     * @example
+     *
+     *     var mode = CryptoJS.mode.CBC.Encryptor.create(cipher, iv.words);
+     */
+    init: function (cipher, iv) {
+      this._cipher = cipher;
+      this._iv = iv;
+    }
+  });
+
+  /**
+   * Cipher Block Chaining mode.
+   */
+  var CBC = C_mode.CBC = (function () {
+    /**
+     * Abstract base CBC mode.
+     */
+    var CBC = BlockCipherMode.extend();
+
+    /**
+     * CBC encryptor.
+     */
+    CBC.Encryptor = CBC.extend({
+      /**
+       * Processes the data block at offset.
+       *
+       * @param {Array} words The data words to operate on.
+       * @param {number} offset The offset where the block starts.
+       *
+       * @example
+       *
+       *     mode.processBlock(data.words, offset);
+       */
+      processBlock: function (words, offset) {
+        // Shortcuts
+        var cipher = this._cipher;
+        var blockSize = cipher.blockSize;
+
+        // XOR and encrypt
+        xorBlock.call(this, words, offset, blockSize);
+        cipher.encryptBlock(words, offset);
+
+        // Remember this block to use with next block
+        this._prevBlock = words.slice(offset, offset + blockSize);
+      }
+    });
+
+    /**
+     * CBC decryptor.
+     */
+    CBC.Decryptor = CBC.extend({
+      /**
+       * Processes the data block at offset.
+       *
+       * @param {Array} words The data words to operate on.
+       * @param {number} offset The offset where the block starts.
+       *
+       * @example
+       *
+       *     mode.processBlock(data.words, offset);
+       */
+      processBlock: function (words, offset) {
+        // Shortcuts
+        var cipher = this._cipher;
+        var blockSize = cipher.blockSize;
+
+        // Remember this block to use with next block
+        var thisBlock = words.slice(offset, offset + blockSize);
+
+        // Decrypt and XOR
+        cipher.decryptBlock(words, offset);
+        xorBlock.call(this, words, offset, blockSize);
+
+        // This block becomes the previous block
+        this._prevBlock = thisBlock;
+      }
+    });
+
+    function xorBlock(words, offset, blockSize) {
+      // Shortcut
+      var iv = this._iv;
+
+      // Choose mixing block
+      if (iv) {
+        var block = iv;
+
+        // Remove IV for subsequent blocks
+        this._iv = undefined;
+      } else {
+        var block = this._prevBlock;
+      }
+
+      // XOR blocks
+      for (var i = 0; i < blockSize; i++) {
+        words[offset + i] ^= block[i];
+      }
+    }
+
+    return CBC;
+  }());
+
+  /**
+   * Padding namespace.
+   */
+  var C_pad = C.pad = {};
+
+  /**
+   * PKCS #5/7 padding strategy.
+   */
+  var Pkcs7 = C_pad.Pkcs7 = {
+    /**
+     * Pads data using the algorithm defined in PKCS #5/7.
+     *
+     * @param {WordArray} data The data to pad.
+     * @param {number} blockSize The multiple that the data should be padded to.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     CryptoJS.pad.Pkcs7.pad(wordArray, 4);
+     */
+    pad: function (data, blockSize) {
+      // Shortcut
+      var blockSizeBytes = blockSize * 4;
+
+      // Count padding bytes
+      var nPaddingBytes = blockSizeBytes - data.sigBytes % blockSizeBytes;
+
+      // Create padding word
+      var paddingWord = (nPaddingBytes << 24) | (nPaddingBytes << 16) | (nPaddingBytes << 8) | nPaddingBytes;
+
+      // Create padding
+      var paddingWords = [];
+      for (var i = 0; i < nPaddingBytes; i += 4) {
+        paddingWords.push(paddingWord);
+      }
+      var padding = WordArray.create(paddingWords, nPaddingBytes);
+
+      // Add padding
+      data.concat(padding);
+    },
+
+    /**
+     * Unpads data that had been padded using the algorithm defined in PKCS #5/7.
+     *
+     * @param {WordArray} data The data to unpad.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     CryptoJS.pad.Pkcs7.unpad(wordArray);
+     */
+    unpad: function (data) {
+      // Get number of padding bytes from last byte
+      var nPaddingBytes = data.words[(data.sigBytes - 1) >>> 2] & 0xff;
+
+      // Remove padding
+      data.sigBytes -= nPaddingBytes;
+    }
+  };
+
+  /**
+   * Abstract base block cipher template.
+   *
+   * @property {number} blockSize The number of 32-bit words this cipher operates on. Default: 4 (128 bits)
+   */
+  var BlockCipher = C_lib.BlockCipher = Cipher.extend({
+    /**
+     * Configuration options.
+     *
+     * @property {Mode} mode The block mode to use. Default: CBC
+     * @property {Padding} padding The padding strategy to use. Default: Pkcs7
+     */
+    cfg: Cipher.cfg.extend({
+      mode: CBC,
+      padding: Pkcs7
+    }),
+
+    reset: function () {
+      // Reset cipher
+      Cipher.reset.call(this);
+
+      // Shortcuts
+      var cfg = this.cfg;
+      var iv = cfg.iv;
+      var mode = cfg.mode;
+
+      // Reset block mode
+      if (this._xformMode == this._ENC_XFORM_MODE) {
+        var modeCreator = mode.createEncryptor;
+      } else /* if (this._xformMode == this._DEC_XFORM_MODE) */ {
+        var modeCreator = mode.createDecryptor;
+
+        // Keep at least one block in the buffer for unpadding
+        this._minBufferSize = 1;
+      }
+      this._mode = modeCreator.call(mode, this, iv && iv.words);
+    },
+
+    _doProcessBlock: function (words, offset) {
+      this._mode.processBlock(words, offset);
+    },
+
+    _doFinalize: function () {
+      // Shortcut
+      var padding = this.cfg.padding;
+
+      // Finalize
+      if (this._xformMode == this._ENC_XFORM_MODE) {
+        // Pad data
+        padding.pad(this._data, this.blockSize);
+
+        // Process final blocks
+        var finalProcessedBlocks = this._process(!!'flush');
+      } else /* if (this._xformMode == this._DEC_XFORM_MODE) */ {
+        // Process final blocks
+        var finalProcessedBlocks = this._process(!!'flush');
+
+        // Unpad data
+        padding.unpad(finalProcessedBlocks);
+      }
+
+      return finalProcessedBlocks;
+    },
+
+    blockSize: 128/32
+  });
+
+  /**
+   * A collection of cipher parameters.
+   *
+   * @property {WordArray} ciphertext The raw ciphertext.
+   * @property {WordArray} key The key to this ciphertext.
+   * @property {WordArray} iv The IV used in the ciphering operation.
+   * @property {WordArray} salt The salt used with a key derivation function.
+   * @property {Cipher} algorithm The cipher algorithm.
+   * @property {Mode} mode The block mode used in the ciphering operation.
+   * @property {Padding} padding The padding scheme used in the ciphering operation.
+   * @property {number} blockSize The block size of the cipher.
+   * @property {Format} formatter The default formatting strategy to convert this cipher params object to a string.
+   */
+  var CipherParams = C_lib.CipherParams = Base.extend({
+    /**
+     * Initializes a newly created cipher params object.
+     *
+     * @param {Object} cipherParams An object with any of the possible cipher parameters.
+     *
+     * @example
+     *
+     *     var cipherParams = CryptoJS.lib.CipherParams.create({
+         *         ciphertext: ciphertextWordArray,
+         *         key: keyWordArray,
+         *         iv: ivWordArray,
+         *         salt: saltWordArray,
+         *         algorithm: CryptoJS.algo.AES,
+         *         mode: CryptoJS.mode.CBC,
+         *         padding: CryptoJS.pad.PKCS7,
+         *         blockSize: 4,
+         *         formatter: CryptoJS.format.OpenSSL
+         *     });
+     */
+    init: function (cipherParams) {
+      this.mixIn(cipherParams);
+    },
+
+    /**
+     * Converts this cipher params object to a string.
+     *
+     * @param {Format} formatter (Optional) The formatting strategy to use.
+     *
+     * @return {string} The stringified cipher params.
+     *
+     * @throws Error If neither the formatter nor the default formatter is set.
+     *
+     * @example
+     *
+     *     var string = cipherParams + '';
+     *     var string = cipherParams.toString();
+     *     var string = cipherParams.toString(CryptoJS.format.OpenSSL);
+     */
+    toString: function (formatter) {
+      return (formatter || this.formatter).stringify(this);
+    }
+  });
+
+  /**
+   * Format namespace.
+   */
+  var C_format = C.format = {};
+
+  /**
+   * OpenSSL formatting strategy.
+   */
+  var OpenSSLFormatter = C_format.OpenSSL = {
+    /**
+     * Converts a cipher params object to an OpenSSL-compatible string.
+     *
+     * @param {CipherParams} cipherParams The cipher params object.
+     *
+     * @return {string} The OpenSSL-compatible string.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var openSSLString = CryptoJS.format.OpenSSL.stringify(cipherParams);
+     */
+    stringify: function (cipherParams) {
+      // Shortcuts
+      var ciphertext = cipherParams.ciphertext;
+      var salt = cipherParams.salt;
+
+      // Format
+      if (salt) {
+        var wordArray = WordArray.create([0x53616c74, 0x65645f5f]).concat(salt).concat(ciphertext);
+      } else {
+        var wordArray = ciphertext;
+      }
+
+      return wordArray.toString(Base64);
+    },
+
+    /**
+     * Converts an OpenSSL-compatible string to a cipher params object.
+     *
+     * @param {string} openSSLStr The OpenSSL-compatible string.
+     *
+     * @return {CipherParams} The cipher params object.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var cipherParams = CryptoJS.format.OpenSSL.parse(openSSLString);
+     */
+    parse: function (openSSLStr) {
+      // Parse base64
+      var ciphertext = Base64.parse(openSSLStr);
+
+      // Shortcut
+      var ciphertextWords = ciphertext.words;
+
+      // Test for salt
+      if (ciphertextWords[0] == 0x53616c74 && ciphertextWords[1] == 0x65645f5f) {
+        // Extract salt
+        var salt = WordArray.create(ciphertextWords.slice(2, 4));
+
+        // Remove salt from ciphertext
+        ciphertextWords.splice(0, 4);
+        ciphertext.sigBytes -= 16;
+      }
+
+      return CipherParams.create({ ciphertext: ciphertext, salt: salt });
+    }
+  };
+
+  /**
+   * A cipher wrapper that returns ciphertext as a serializable cipher params object.
+   */
+  var SerializableCipher = C_lib.SerializableCipher = Base.extend({
+    /**
+     * Configuration options.
+     *
+     * @property {Formatter} format The formatting strategy to convert cipher param objects to and from a string. Default: OpenSSL
+     */
+    cfg: Base.extend({
+      format: OpenSSLFormatter
+    }),
+
+    /**
+     * Encrypts a message.
+     *
+     * @param {Cipher} cipher The cipher algorithm to use.
+     * @param {WordArray|string} message The message to encrypt.
+     * @param {WordArray} key The key.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @return {CipherParams} A cipher params object.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var ciphertextParams = CryptoJS.lib.SerializableCipher.encrypt(CryptoJS.algo.AES, message, key);
+     *     var ciphertextParams = CryptoJS.lib.SerializableCipher.encrypt(CryptoJS.algo.AES, message, key, { iv: iv });
+     *     var ciphertextParams = CryptoJS.lib.SerializableCipher.encrypt(CryptoJS.algo.AES, message, key, { iv: iv, format: CryptoJS.format.OpenSSL });
+     */
+    encrypt: function (cipher, message, key, cfg) {
+      // Apply config defaults
+      cfg = this.cfg.extend(cfg);
+
+      // Encrypt
+      var encryptor = cipher.createEncryptor(key, cfg);
+      var ciphertext = encryptor.finalize(message);
+
+      // Shortcut
+      var cipherCfg = encryptor.cfg;
+
+      // Create and return serializable cipher params
+      return CipherParams.create({
+        ciphertext: ciphertext,
+        key: key,
+        iv: cipherCfg.iv,
+        algorithm: cipher,
+        mode: cipherCfg.mode,
+        padding: cipherCfg.padding,
+        blockSize: cipher.blockSize,
+        formatter: cfg.format
+      });
+    },
+
+    /**
+     * Decrypts serialized ciphertext.
+     *
+     * @param {Cipher} cipher The cipher algorithm to use.
+     * @param {CipherParams|string} ciphertext The ciphertext to decrypt.
+     * @param {WordArray} key The key.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @return {WordArray} The plaintext.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var plaintext = CryptoJS.lib.SerializableCipher.decrypt(CryptoJS.algo.AES, formattedCiphertext, key, { iv: iv, format: CryptoJS.format.OpenSSL });
+     *     var plaintext = CryptoJS.lib.SerializableCipher.decrypt(CryptoJS.algo.AES, ciphertextParams, key, { iv: iv, format: CryptoJS.format.OpenSSL });
+     */
+    decrypt: function (cipher, ciphertext, key, cfg) {
+      // Apply config defaults
+      cfg = this.cfg.extend(cfg);
+
+      // Convert string to CipherParams
+      ciphertext = this._parse(ciphertext, cfg.format);
+
+      // Decrypt
+      var plaintext = cipher.createDecryptor(key, cfg).finalize(ciphertext.ciphertext);
+
+      return plaintext;
+    },
+
+    /**
+     * Converts serialized ciphertext to CipherParams,
+     * else assumed CipherParams already and returns ciphertext unchanged.
+     *
+     * @param {CipherParams|string} ciphertext The ciphertext.
+     * @param {Formatter} format The formatting strategy to use to parse serialized ciphertext.
+     *
+     * @return {CipherParams} The unserialized ciphertext.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var ciphertextParams = CryptoJS.lib.SerializableCipher._parse(ciphertextStringOrParams, format);
+     */
+    _parse: function (ciphertext, format) {
+      if (typeof ciphertext == 'string') {
+        return format.parse(ciphertext, this);
+      } else {
+        return ciphertext;
+      }
+    }
+  });
+
+  /**
+   * Key derivation function namespace.
+   */
+  var C_kdf = C.kdf = {};
+
+  /**
+   * OpenSSL key derivation function.
+   */
+  var OpenSSLKdf = C_kdf.OpenSSL = {
+    /**
+     * Derives a key and IV from a password.
+     *
+     * @param {string} password The password to derive from.
+     * @param {number} keySize The size in words of the key to generate.
+     * @param {number} ivSize The size in words of the IV to generate.
+     * @param {WordArray|string} salt (Optional) A 64-bit salt to use. If omitted, a salt will be generated randomly.
+     *
+     * @return {CipherParams} A cipher params object with the key, IV, and salt.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var derivedParams = CryptoJS.kdf.OpenSSL.execute('Password', 256/32, 128/32);
+     *     var derivedParams = CryptoJS.kdf.OpenSSL.execute('Password', 256/32, 128/32, 'saltsalt');
+     */
+    execute: function (password, keySize, ivSize, salt) {
+      // Generate random salt
+      if (!salt) {
+        salt = WordArray.random(64/8);
+      }
+
+      // Derive key and IV
+      var key = EvpKDF.create({ keySize: keySize + ivSize }).compute(password, salt);
+
+      // Separate key and IV
+      var iv = WordArray.create(key.words.slice(keySize), ivSize * 4);
+      key.sigBytes = keySize * 4;
+
+      // Return params
+      return CipherParams.create({ key: key, iv: iv, salt: salt });
+    }
+  };
+
+  /**
+   * A serializable cipher wrapper that derives the key from a password,
+   * and returns ciphertext as a serializable cipher params object.
+   */
+  var PasswordBasedCipher = C_lib.PasswordBasedCipher = SerializableCipher.extend({
+    /**
+     * Configuration options.
+     *
+     * @property {KDF} kdf The key derivation function to use to generate a key and IV from a password. Default: OpenSSL
+     */
+    cfg: SerializableCipher.cfg.extend({
+      kdf: OpenSSLKdf
+    }),
+
+    /**
+     * Encrypts a message using a password.
+     *
+     * @param {Cipher} cipher The cipher algorithm to use.
+     * @param {WordArray|string} message The message to encrypt.
+     * @param {string} password The password.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @return {CipherParams} A cipher params object.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var ciphertextParams = CryptoJS.lib.PasswordBasedCipher.encrypt(CryptoJS.algo.AES, message, 'password');
+     *     var ciphertextParams = CryptoJS.lib.PasswordBasedCipher.encrypt(CryptoJS.algo.AES, message, 'password', { format: CryptoJS.format.OpenSSL });
+     */
+    encrypt: function (cipher, message, password, cfg) {
+      // Apply config defaults
+      cfg = this.cfg.extend(cfg);
+
+      // Derive key and other params
+      var derivedParams = cfg.kdf.execute(password, cipher.keySize, cipher.ivSize);
+
+      // Add IV to config
+      cfg.iv = derivedParams.iv;
+
+      // Encrypt
+      var ciphertext = SerializableCipher.encrypt.call(this, cipher, message, derivedParams.key, cfg);
+
+      // Mix in derived params
+      ciphertext.mixIn(derivedParams);
+
+      return ciphertext;
+    },
+
+    /**
+     * Decrypts serialized ciphertext using a password.
+     *
+     * @param {Cipher} cipher The cipher algorithm to use.
+     * @param {CipherParams|string} ciphertext The ciphertext to decrypt.
+     * @param {string} password The password.
+     * @param {Object} cfg (Optional) The configuration options to use for this operation.
+     *
+     * @return {WordArray} The plaintext.
+     *
+     * @static
+     *
+     * @example
+     *
+     *     var plaintext = CryptoJS.lib.PasswordBasedCipher.decrypt(CryptoJS.algo.AES, formattedCiphertext, 'password', { format: CryptoJS.format.OpenSSL });
+     *     var plaintext = CryptoJS.lib.PasswordBasedCipher.decrypt(CryptoJS.algo.AES, ciphertextParams, 'password', { format: CryptoJS.format.OpenSSL });
+     */
+    decrypt: function (cipher, ciphertext, password, cfg) {
+      // Apply config defaults
+      cfg = this.cfg.extend(cfg);
+
+      // Convert string to CipherParams
+      ciphertext = this._parse(ciphertext, cfg.format);
+
+      // Derive key and other params
+      var derivedParams = cfg.kdf.execute(password, cipher.keySize, cipher.ivSize, ciphertext.salt);
+
+      // Add IV to config
+      cfg.iv = derivedParams.iv;
+
+      // Decrypt
+      var plaintext = SerializableCipher.decrypt.call(this, cipher, ciphertext, derivedParams.key, cfg);
+
+      return plaintext;
+    }
+  });
+}());
+/*
+ CryptoJS v3.1.2
+ sha1.js
+ code.google.com/p/crypto-js
+ (c) 2009-2013 by Jeff Mott. All rights reserved.
+ code.google.com/p/crypto-js/wiki/License
+ */
+(function () {
+  // Shortcuts
+  var C = CryptoJS;
+  var C_lib = C.lib;
+  var WordArray = C_lib.WordArray;
+  var Hasher = C_lib.Hasher;
+  var C_algo = C.algo;
+
+  // Reusable object
+  var W = [];
+
+  /**
+   * SHA-1 hash algorithm.
+   */
+  var SHA1 = C_algo.SHA1 = Hasher.extend({
+    _doReset: function () {
+      this._hash = new WordArray.init([
+        0x67452301, 0xefcdab89,
+        0x98badcfe, 0x10325476,
+        0xc3d2e1f0
+      ]);
+    },
+
+    _doProcessBlock: function (M, offset) {
+      // Shortcut
+      var H = this._hash.words;
+
+      // Working variables
+      var a = H[0];
+      var b = H[1];
+      var c = H[2];
+      var d = H[3];
+      var e = H[4];
+
+      // Computation
+      for (var i = 0; i < 80; i++) {
+        if (i < 16) {
+          W[i] = M[offset + i] | 0;
+        } else {
+          var n = W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16];
+          W[i] = (n << 1) | (n >>> 31);
+        }
+
+        var t = ((a << 5) | (a >>> 27)) + e + W[i];
+        if (i < 20) {
+          t += ((b & c) | (~b & d)) + 0x5a827999;
+        } else if (i < 40) {
+          t += (b ^ c ^ d) + 0x6ed9eba1;
+        } else if (i < 60) {
+          t += ((b & c) | (b & d) | (c & d)) - 0x70e44324;
+        } else /* if (i < 80) */ {
+          t += (b ^ c ^ d) - 0x359d3e2a;
+        }
+
+        e = d;
+        d = c;
+        c = (b << 30) | (b >>> 2);
+        b = a;
+        a = t;
+      }
+
+      // Intermediate hash value
+      H[0] = (H[0] + a) | 0;
+      H[1] = (H[1] + b) | 0;
+      H[2] = (H[2] + c) | 0;
+      H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0;
+    },
+
+    _doFinalize: function () {
+      // Shortcuts
+      var data = this._data;
+      var dataWords = data.words;
+
+      var nBitsTotal = this._nDataBytes * 8;
+      var nBitsLeft = data.sigBytes * 8;
+
+      // Add padding
+      dataWords[nBitsLeft >>> 5] |= 0x80 << (24 - nBitsLeft % 32);
+      dataWords[(((nBitsLeft + 64) >>> 9) << 4) + 14] = Math.floor(nBitsTotal / 0x100000000);
+      dataWords[(((nBitsLeft + 64) >>> 9) << 4) + 15] = nBitsTotal;
+      data.sigBytes = dataWords.length * 4;
+
+      // Hash final blocks
+      this._process();
+
+      // Return final computed hash
+      return this._hash;
+    },
+
+    clone: function () {
+      var clone = Hasher.clone.call(this);
+      clone._hash = this._hash.clone();
+
+      return clone;
+    }
+  });
+
+  /**
+   * Shortcut function to the hasher's object interface.
+   *
+   * @param {WordArray|string} message The message to hash.
+   *
+   * @return {WordArray} The hash.
+   *
+   * @static
+   *
+   * @example
+   *
+   *     var hash = CryptoJS.SHA1('message');
+   *     var hash = CryptoJS.SHA1(wordArray);
+   */
+  C.SHA1 = Hasher._createHelper(SHA1);
+
+  /**
+   * Shortcut function to the HMAC's object interface.
+   *
+   * @param {WordArray|string} message The message to hash.
+   * @param {WordArray|string} key The secret key.
+   *
+   * @return {WordArray} The HMAC.
+   *
+   * @static
+   *
+   * @example
+   *
+   *     var hmac = CryptoJS.HmacSHA1(message, key);
+   */
+  C.HmacSHA1 = Hasher._createHmacHelper(SHA1);
+}());
+/*
+ CryptoJS v3.1.2
+ x64-core.js
+ code.google.com/p/crypto-js
+ (c) 2009-2013 by Jeff Mott. All rights reserved.
+ code.google.com/p/crypto-js/wiki/License
+ */
+(function (undefined) {
+  // Shortcuts
+  var C = CryptoJS;
+  var C_lib = C.lib;
+  var Base = C_lib.Base;
+  var X32WordArray = C_lib.WordArray;
+
+  /**
+   * x64 namespace.
+   */
+  var C_x64 = C.x64 = {};
+
+  /**
+   * A 64-bit word.
+   */
+  var X64Word = C_x64.Word = Base.extend({
+    /**
+     * Initializes a newly created 64-bit word.
+     *
+     * @param {number} high The high 32 bits.
+     * @param {number} low The low 32 bits.
+     *
+     * @example
+     *
+     *     var x64Word = CryptoJS.x64.Word.create(0x00010203, 0x04050607);
+     */
+    init: function (high, low) {
+      this.high = high;
+      this.low = low;
+    }
+
+    /**
+     * Bitwise NOTs this word.
+     *
+     * @return {X64Word} A new x64-Word object after negating.
+     *
+     * @example
+     *
+     *     var negated = x64Word.not();
+     */
+    // not: function () {
+    // var high = ~this.high;
+    // var low = ~this.low;
+
+    // return X64Word.create(high, low);
+    // },
+
+    /**
+     * Bitwise ANDs this word with the passed word.
+     *
+     * @param {X64Word} word The x64-Word to AND with this word.
+     *
+     * @return {X64Word} A new x64-Word object after ANDing.
+     *
+     * @example
+     *
+     *     var anded = x64Word.and(anotherX64Word);
+     */
+    // and: function (word) {
+    // var high = this.high & word.high;
+    // var low = this.low & word.low;
+
+    // return X64Word.create(high, low);
+    // },
+
+    /**
+     * Bitwise ORs this word with the passed word.
+     *
+     * @param {X64Word} word The x64-Word to OR with this word.
+     *
+     * @return {X64Word} A new x64-Word object after ORing.
+     *
+     * @example
+     *
+     *     var ored = x64Word.or(anotherX64Word);
+     */
+    // or: function (word) {
+    // var high = this.high | word.high;
+    // var low = this.low | word.low;
+
+    // return X64Word.create(high, low);
+    // },
+
+    /**
+     * Bitwise XORs this word with the passed word.
+     *
+     * @param {X64Word} word The x64-Word to XOR with this word.
+     *
+     * @return {X64Word} A new x64-Word object after XORing.
+     *
+     * @example
+     *
+     *     var xored = x64Word.xor(anotherX64Word);
+     */
+    // xor: function (word) {
+    // var high = this.high ^ word.high;
+    // var low = this.low ^ word.low;
+
+    // return X64Word.create(high, low);
+    // },
+
+    /**
+     * Shifts this word n bits to the left.
+     *
+     * @param {number} n The number of bits to shift.
+     *
+     * @return {X64Word} A new x64-Word object after shifting.
+     *
+     * @example
+     *
+     *     var shifted = x64Word.shiftL(25);
+     */
+    // shiftL: function (n) {
+    // if (n < 32) {
+    // var high = (this.high << n) | (this.low >>> (32 - n));
+    // var low = this.low << n;
+    // } else {
+    // var high = this.low << (n - 32);
+    // var low = 0;
+    // }
+
+    // return X64Word.create(high, low);
+    // },
+
+    /**
+     * Shifts this word n bits to the right.
+     *
+     * @param {number} n The number of bits to shift.
+     *
+     * @return {X64Word} A new x64-Word object after shifting.
+     *
+     * @example
+     *
+     *     var shifted = x64Word.shiftR(7);
+     */
+    // shiftR: function (n) {
+    // if (n < 32) {
+    // var low = (this.low >>> n) | (this.high << (32 - n));
+    // var high = this.high >>> n;
+    // } else {
+    // var low = this.high >>> (n - 32);
+    // var high = 0;
+    // }
+
+    // return X64Word.create(high, low);
+    // },
+
+    /**
+     * Rotates this word n bits to the left.
+     *
+     * @param {number} n The number of bits to rotate.
+     *
+     * @return {X64Word} A new x64-Word object after rotating.
+     *
+     * @example
+     *
+     *     var rotated = x64Word.rotL(25);
+     */
+    // rotL: function (n) {
+    // return this.shiftL(n).or(this.shiftR(64 - n));
+    // },
+
+    /**
+     * Rotates this word n bits to the right.
+     *
+     * @param {number} n The number of bits to rotate.
+     *
+     * @return {X64Word} A new x64-Word object after rotating.
+     *
+     * @example
+     *
+     *     var rotated = x64Word.rotR(7);
+     */
+    // rotR: function (n) {
+    // return this.shiftR(n).or(this.shiftL(64 - n));
+    // },
+
+    /**
+     * Adds this word with the passed word.
+     *
+     * @param {X64Word} word The x64-Word to add with this word.
+     *
+     * @return {X64Word} A new x64-Word object after adding.
+     *
+     * @example
+     *
+     *     var added = x64Word.add(anotherX64Word);
+     */
+    // add: function (word) {
+    // var low = (this.low + word.low) | 0;
+    // var carry = (low >>> 0) < (this.low >>> 0) ? 1 : 0;
+    // var high = (this.high + word.high + carry) | 0;
+
+    // return X64Word.create(high, low);
+    // }
+  });
+
+  /**
+   * An array of 64-bit words.
+   *
+   * @property {Array} words The array of CryptoJS.x64.Word objects.
+   * @property {number} sigBytes The number of significant bytes in this word array.
+   */
+  var X64WordArray = C_x64.WordArray = Base.extend({
+    /**
+     * Initializes a newly created word array.
+     *
+     * @param {Array} words (Optional) An array of CryptoJS.x64.Word objects.
+     * @param {number} sigBytes (Optional) The number of significant bytes in the words.
+     *
+     * @example
+     *
+     *     var wordArray = CryptoJS.x64.WordArray.create();
+     *
+     *     var wordArray = CryptoJS.x64.WordArray.create([
+     *         CryptoJS.x64.Word.create(0x00010203, 0x04050607),
+     *         CryptoJS.x64.Word.create(0x18191a1b, 0x1c1d1e1f)
+     *     ]);
+     *
+     *     var wordArray = CryptoJS.x64.WordArray.create([
+     *         CryptoJS.x64.Word.create(0x00010203, 0x04050607),
+     *         CryptoJS.x64.Word.create(0x18191a1b, 0x1c1d1e1f)
+     *     ], 10);
+     */
+    init: function (words, sigBytes) {
+      words = this.words = words || [];
+
+      if (sigBytes != undefined) {
+        this.sigBytes = sigBytes;
+      } else {
+        this.sigBytes = words.length * 8;
+      }
+    },
+
+    /**
+     * Converts this 64-bit word array to a 32-bit word array.
+     *
+     * @return {CryptoJS.lib.WordArray} This word array's data as a 32-bit word array.
+     *
+     * @example
+     *
+     *     var x32WordArray = x64WordArray.toX32();
+     */
+    toX32: function () {
+      // Shortcuts
+      var x64Words = this.words;
+      var x64WordsLength = x64Words.length;
+
+      // Convert
+      var x32Words = [];
+      for (var i = 0; i < x64WordsLength; i++) {
+        var x64Word = x64Words[i];
+        x32Words.push(x64Word.high);
+        x32Words.push(x64Word.low);
+      }
+
+      return X32WordArray.create(x32Words, this.sigBytes);
+    },
+
+    /**
+     * Creates a copy of this word array.
+     *
+     * @return {X64WordArray} The clone.
+     *
+     * @example
+     *
+     *     var clone = x64WordArray.clone();
+     */
+    clone: function () {
+      var clone = Base.clone.call(this);
+
+      // Clone "words" array
+      var words = clone.words = this.words.slice(0);
+
+      // Clone each X64Word object
+      var wordsLength = words.length;
+      for (var i = 0; i < wordsLength; i++) {
+        words[i] = words[i].clone();
+      }
+
+      return clone;
+    }
+  });
+}());
+; browserify_shim__define__module__export__(typeof CryptoJS != "undefined" ? CryptoJS : window.CryptoJS);
+
+}).call(global, undefined, undefined, undefined, undefined, function defineExport(ex) { module.exports = ex; });
+
+}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],9:[function(_dereq_,module,exports){
+module.exports=_dereq_(2)
+},{}],10:[function(_dereq_,module,exports){
+var v1 = _dereq_('./v1');
+var v4 = _dereq_('./v4');
+
+var uuid = v4;
+uuid.v1 = v1;
+uuid.v4 = v4;
+
+module.exports = uuid;
+
+},{"./v1":13,"./v4":14}],11:[function(_dereq_,module,exports){
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+var byteToHex = [];
+for (var i = 0; i < 256; ++i) {
+  byteToHex[i] = (i + 0x100).toString(16).substr(1);
+}
+
+function bytesToUuid(buf, offset) {
+  var i = offset || 0;
+  var bth = byteToHex;
+  return  bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]];
+}
+
+module.exports = bytesToUuid;
+
+},{}],12:[function(_dereq_,module,exports){
+(function (global){
+// Unique ID creation requires a high quality random # generator.  In the
+// browser this is a little complicated due to unknown quality of Math.random()
+// and inconsistent support for the `crypto` API.  We do the best we can via
+// feature-detection
+var rng;
+
+var crypto = global.crypto || global.msCrypto; // for IE 11
+if (crypto && crypto.getRandomValues) {
+  // WHATWG crypto RNG - http://wiki.whatwg.org/wiki/Crypto
+  var rnds8 = new Uint8Array(16);
+  rng = function whatwgRNG() {
+    crypto.getRandomValues(rnds8);
+    return rnds8;
+  };
+}
+
+if (!rng) {
+  // Math.random()-based (RNG)
+  //
+  // If all else fails, use Math.random().  It's fast, but is of unspecified
+  // quality.
+  var  rnds = new Array(16);
+  rng = function() {
+    for (var i = 0, r; i < 16; i++) {
+      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
+      rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
+    }
+
+    return rnds;
+  };
+}
+
+module.exports = rng;
+
+}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],13:[function(_dereq_,module,exports){
+// Unique ID creation requires a high quality random # generator.  We feature
+// detect to determine the best RNG source, normalizing to a function that
+// returns 128-bits of randomness, since that's what's usually required
+var rng = _dereq_('./lib/rng');
+var bytesToUuid = _dereq_('./lib/bytesToUuid');
+
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
+
+// random #'s we need to init node and clockseq
+var _seedBytes = rng();
+
+// Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+var _nodeId = [
+  _seedBytes[0] | 0x01,
+  _seedBytes[1], _seedBytes[2], _seedBytes[3], _seedBytes[4], _seedBytes[5]
+];
+
+// Per 4.2.2, randomize (14 bit) clockseq
+var _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
+
+// Previous uuid creation time
+var _lastMSecs = 0, _lastNSecs = 0;
+
+// See https://github.com/broofa/node-uuid for API details
+function v1(options, buf, offset) {
+  var i = buf && offset || 0;
+  var b = buf || [];
+
+  options = options || {};
+
+  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
+
+  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
+
+  // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
+
+  // Time since last uuid creation (in msecs)
+  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+  // Per 4.2.1.2, Bump clockseq on clock regression
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  }
+
+  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  }
+
+  // Per 4.2.1.2 Throw error if too many uuids are requested
+  if (nsecs >= 10000) {
+    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq;
+
+  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+  msecs += 12219292800000;
+
+  // `time_low`
+  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff;
+
+  // `time_mid`
+  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff;
+
+  // `time_high_and_version`
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+  b[i++] = tmh >>> 16 & 0xff;
+
+  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+  b[i++] = clockseq >>> 8 | 0x80;
+
+  // `clock_seq_low`
+  b[i++] = clockseq & 0xff;
+
+  // `node`
+  var node = options.node || _nodeId;
+  for (var n = 0; n < 6; ++n) {
+    b[i + n] = node[n];
+  }
+
+  return buf ? buf : bytesToUuid(b);
+}
+
+module.exports = v1;
+
+},{"./lib/bytesToUuid":11,"./lib/rng":12}],14:[function(_dereq_,module,exports){
+var rng = _dereq_('./lib/rng');
+var bytesToUuid = _dereq_('./lib/bytesToUuid');
+
+function v4(options, buf, offset) {
+  var i = buf && offset || 0;
+
+  if (typeof(options) == 'string') {
+    buf = options == 'binary' ? new Array(16) : null;
+    options = null;
+  }
+  options = options || {};
+
+  var rnds = options.random || (options.rng || rng)();
+
+  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+  rnds[6] = (rnds[6] & 0x0f) | 0x40;
+  rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+  // Copy bytes to buffer, if provided
+  if (buf) {
+    for (var ii = 0; ii < 16; ++ii) {
+      buf[i + ii] = rnds[ii];
+    }
+  }
+
+  return buf || bytesToUuid(rnds);
+}
+
+module.exports = v4;
+
+},{"./lib/bytesToUuid":11,"./lib/rng":12}],15:[function(_dereq_,module,exports){
+var uuidGenerator = _dereq_('uuid').v1;
+var CLIENT_ID_TAG = "feedhenry_sync_client";
+
+/**
+ * Get unique client id for current browser/platform/user
+ */
+function getClientId() {
+    if (window && window.device) {
+        return window.device.uuid;
+    }
+    if (navigator && navigator.device) {
+        return navigator.device.uuid;
+    }
+    if (window && window.localStorage) {
+        var clientId = window.localStorage.getItem(CLIENT_ID_TAG);
+        if (!clientId) {
+            clientId = uuidGenerator();
+            localStorage.setItem(CLIENT_ID_TAG, clientId);
+        }
+        return clientId;
+    } else {
+        throw Error("Cannot create and store client id");
+    }
+}
+
+module.exports = {
+    getClientId: getClientId
+};
+},{"uuid":10}],16:[function(_dereq_,module,exports){
+var cloudURL;
+var cloudPath;
+var cidProvider = _dereq_('./clientIdProvider');
+
+/**
+ * Default sync cloud handler responsible for making all sync requests to 
+ * server. 
+ */
+var handler = function (params, success, failure) {
+    if (!cloudPath) {
+        // Default server sync api route
+        cloudPath = '/sync/';
+    }
+    var url = cloudURL + cloudPath + params.dataset_id;
+    var payload = params.req;
+    payload.__fh = {
+        cuid: cidProvider.getClientId()
+    };
+    var json = JSON.stringify(payload);
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
+                var responseJson;
+                try {
+                    if (xhr.responseText) {
+                        responseJson = JSON.parse(xhr.responseText);
+                    }
+                } catch (e) {
+                    return failure(e);
+                }
+                success(responseJson);
+            } else {
+                failure(xhr.responseText);
+            }
+        }
+    };
+    xhr.send(json);
+};
+
+/**
+ * Default sync cloud handler init method
+ * 
+ * @param url - for example http://example.com:7000
+ * @param path - api path (will default to '/sync')
+ */
+var init = function (url, path) {
+    cloudURL = url;
+    cloudPath = path;
+};
+
+module.exports = {
+    handler: handler,
+    init: init,
+};
+},{"./clientIdProvider":15}],17:[function(_dereq_,module,exports){
+var api_sync = _dereq_("./sync-client");
+
+// Mounting into global fh namespace
+var fh = window.$fh = window.$fh || {};
+fh.sync = api_sync;
+
+module.exports = fh.sync;
+},{"./sync-client":18}],18:[function(_dereq_,module,exports){
+var CryptoJS = _dereq_("../libs/generated/crypto");
+var Lawnchair = _dereq_('../libs/generated/lawnchair');
+var defaultCloudHandler = _dereq_('./cloudHandler');
+
+var self = {
+
+  // CONFIG
+  defaults: {
+    "sync_frequency": 10,
+    // How often to synchronise data with the cloud in seconds.
+    "auto_sync_local_updates": true,
+    // Should local chages be syned to the cloud immediately, or should they wait for the next sync interval
+    "notify_client_storage_failed": true,
+    // Should a notification event be triggered when loading/saving to client storage fails
+    "notify_sync_started": true,
+    // Should a notification event be triggered when a sync cycle with the server has been started
+    "notify_sync_complete": true,
+    // Should a notification event be triggered when a sync cycle with the server has been completed
+    "notify_offline_update": true,
+    // Should a notification event be triggered when an attempt was made to update a record while offline
+    "notify_collision_detected": true,
+    // Should a notification event be triggered when an update failed due to data collision
+    "notify_remote_update_failed": true,
+    // Should a notification event be triggered when an update failed for a reason other than data collision
+    "notify_local_update_applied": true,
+    // Should a notification event be triggered when an update was applied to the local data store
+    "notify_remote_update_applied": true,
+    // Should a notification event be triggered when an update was applied to the remote data store
+    "notify_delta_received": true,
+    // Should a notification event be triggered when a delta was received from the remote data store for the dataset 
+    "notify_record_delta_received": true,
+    // Should a notification event be triggered when a delta was received from the remote data store for a record
+    "notify_sync_failed": true,
+    // Should a notification event be triggered when the sync loop failed to complete
+    "do_console_log": false,
+    // Should log statements be written to console.log
+    "crashed_count_wait" : 10,
+    // How many syncs should we check for updates on crashed in flight updates before we give up searching
+    "resend_crashed_updates" : true,
+    // If we have reached the crashed_count_wait limit, should we re-try sending the crashed in flight pending record
+    "sync_active" : true,
+    // Is the background sync with the cloud currently active
+    "storage_strategy" : "html5-filesystem",
+    // Storage strategy to use for Lawnchair - supported strategies are 'html5-filesystem' and 'dom'
+    "file_system_quota" : 50 * 1024 * 1204,
+    // Amount of space to request from the HTML5 filesystem API when running in browser
+    "icloud_backup" : false //ios only. If set to true, the file will be backed by icloud
+  },
+
+  notifications: {
+    "CLIENT_STORAGE_FAILED": "client_storage_failed",
+    // loading/saving to client storage failed
+    "SYNC_STARTED": "sync_started",
+    // A sync cycle with the server has been started
+    "SYNC_COMPLETE": "sync_complete",
+    // A sync cycle with the server has been completed
+    "OFFLINE_UPDATE": "offline_update",
+    // An attempt was made to update a record while offline
+    "COLLISION_DETECTED": "collision_detected",
+    //Update Failed due to data collision
+    "REMOTE_UPDATE_FAILED": "remote_update_failed",
+    // Update Failed for a reason other than data collision
+    "REMOTE_UPDATE_APPLIED": "remote_update_applied",
+    // An update was applied to the remote data store
+    "LOCAL_UPDATE_APPLIED": "local_update_applied",
+    // An update was applied to the local data store
+    "DELTA_RECEIVED": "delta_received",
+    // A delta was received from the remote data store for the dataset 
+    "RECORD_DELTA_RECEIVED": "record_delta_received",
+    // A delta was received from the remote data store for the record 
+    "SYNC_FAILED": "sync_failed"
+    // Sync loop failed to complete
+  },
+
+  datasets: {},
+
+  // Initialise config to default values;
+  config: undefined,
+
+  //TODO: deprecate this
+  notify_callback: undefined,
+
+  notify_callback_map : {},
+
+  init_is_called: false,
+
+  //this is used to map the temp data uid (created on client) to the real uid (created in the cloud)
+  uid_map: {},
+
+  // PUBLIC FUNCTION IMPLEMENTATIONS
+  init: function(options) {
+    self.consoleLog('sync - init called');
+
+    self.config = JSON.parse(JSON.stringify(self.defaults));
+    for (var i in options) {
+      self.config[i] = options[i];
+    }
+
+    //prevent multiple monitors from created if init is called multiple times
+    if(!self.init_is_called){
+      self.init_is_called = true;
+      self.datasetMonitor();
+    }
+    defaultCloudHandler.init(self.config.cloudUrl, self.config.cloudPath);
+  },
+
+  notify: function(datasetId, callback) {
+    if(arguments.length === 1 && typeof datasetId === 'function'){
+      self.notify_callback = datasetId;
+    } else {
+      self.notify_callback_map[datasetId] = callback;
+    }
+  },
+
+  manage: function(dataset_id, opts, query_params, meta_data, cb) {
+    self.consoleLog('manage - START');
+
+    // Currently we do not enforce the rule that init() function should be called before manage().
+    // We need this check to guard against self.config undefined
+    if (!self.config){
+      self.config = JSON.parse(JSON.stringify(self.defaults));
+    }
+
+    var options = opts || {};
+
+    var doManage = function(dataset) {
+      self.consoleLog('doManage dataset :: initialised = ' + dataset.initialised + " :: " + dataset_id + ' :: ' + JSON.stringify(options));
+
+      var currentDatasetCfg = (dataset.config) ? dataset.config : self.config;
+      var datasetConfig = self.setOptions(currentDatasetCfg, options);
+
+      dataset.query_params = query_params || dataset.query_params || {};
+      dataset.meta_data = meta_data || dataset.meta_data || {};
+      dataset.config = datasetConfig;
+      dataset.syncRunning = false;
+      dataset.syncPending = true;
+      dataset.initialised = true;
+      if(typeof dataset.meta === "undefined"){
+        dataset.meta = {};
+      }
+
+      self.saveDataSet(dataset_id, function() {
+
+        if( cb ) {
+          cb();
+        }
+      });
+    };
+
+    // Check if the dataset is already loaded
+    self.getDataSet(dataset_id, function(dataset) {
+      self.consoleLog('manage - dataset already loaded');
+      doManage(dataset);
+    }, function(err) {
+      self.consoleLog('manage - dataset not loaded... trying to load');
+
+      // Not already loaded, try to load from local storage
+      self.loadDataSet(dataset_id, function(dataset) {
+          self.consoleLog('manage - dataset loaded from local storage');
+
+          // Loading from local storage worked
+
+          // Fire the local update event to indicate that dataset was loaded from local storage
+          self.doNotify(dataset_id, null, self.notifications.LOCAL_UPDATE_APPLIED, "load");
+
+          // Put the dataet under the management of the sync service
+          doManage(dataset);
+        },
+        function(err) {
+          // No dataset in memory or local storage - create a new one and put it in memory
+          self.consoleLog('manage - Creating new dataset for id ' + dataset_id);
+          var dataset = {};
+          dataset.data = {};
+          dataset.pending = {};
+          dataset.meta = {};
+          self.datasets[dataset_id] = dataset;
+          doManage(dataset);
+        });
+    });
+  },
+
+  /**
+   * Sets options for passed in config, if !config then options will be applied to default config.
+   * @param {Object} config - config to which options will be applied
+   * @param {Object} options - options to be applied to the config
+   */
+  setOptions: function(config, options) {
+    // Make sure config is initialised
+    if( ! config ) {
+      config = JSON.parse(JSON.stringify(self.defaults));
+    }
+
+
+    var datasetConfig = JSON.parse(JSON.stringify(config));
+    var optionsIn = JSON.parse(JSON.stringify(options));
+    for (var k in optionsIn) {
+      datasetConfig[k] = optionsIn[k];
+    }
+
+    return datasetConfig;
+  },
+
+  list: function(dataset_id, success, failure) {
+    self.getDataSet(dataset_id, function(dataset) {
+      if (dataset && dataset.data) {
+        // Return a copy of the dataset so updates will not automatically make it back into the dataset
+        var res = JSON.parse(JSON.stringify(dataset.data));
+        success(res);
+      } else {
+        if(failure) {
+          failure('no_data');
+        }
+      }
+    }, function(code, msg) {
+      if(failure) {
+        failure(code, msg);
+      }
+    });
+  },
+
+  getUID: function(oldOrNewUid){
+    var uid = self.uid_map[oldOrNewUid];
+    if(uid || uid === 0){
+      return uid;
+    } else {
+      return oldOrNewUid;
+    }
+  },
+
+  create: function(dataset_id, data, success, failure) {
+    if(data == null){
+      if(failure){
+        return failure("null_data");
+      }
+    }
+    self.addPendingObj(dataset_id, null, data, "create", success, failure);
+  },
+
+  read: function(dataset_id, uid, success, failure) {
+    self.getDataSet(dataset_id, function(dataset) {
+      uid = self.getUID(uid);
+      var rec = dataset.data[uid];
+      if (!rec) {
+        failure("unknown_uid");
+      } else {
+        // Return a copy of the record so updates will not automatically make it back into the dataset
+        var res = JSON.parse(JSON.stringify(rec));
+        success(res);
+      }
+    }, function(code, msg) {
+      if(failure) {
+        failure(code, msg);
+      }
+    });
+  },
+
+  update: function(dataset_id, uid, data, success, failure) {
+    uid = self.getUID(uid);
+    self.addPendingObj(dataset_id, uid, data, "update", success, failure);
+  },
+
+  'delete': function(dataset_id, uid, success, failure) {
+    uid = self.getUID(uid);
+    self.addPendingObj(dataset_id, uid, null, "delete", success, failure);
+  },
+
+  getPending: function(dataset_id, cb) {
+    self.getDataSet(dataset_id, function(dataset) {
+      var res;
+      if( dataset ) {
+        res = dataset.pending;
+      }
+      cb(res);
+    }, function(err, datatset_id) {
+        self.consoleLog(err);
+    });
+  },
+
+  clearPending: function(dataset_id, cb) {
+    self.getDataSet(dataset_id, function(dataset) {
+      dataset.pending = {};
+      self.saveDataSet(dataset_id, cb);
+    });
+  },
+
+  listCollisions : function(dataset_id, success, failure){
+    self.getDataSet(dataset_id, function(dataset) {
+      self.doCloudCall({
+        "dataset_id": dataset_id,
+        "req": {
+          "fn": "listCollisions",
+          "meta_data" : dataset.meta_data
+        }
+      }, success, failure);
+    }, failure);
+  },
+
+  removeCollision: function(dataset_id, colissionHash, success, failure) {
+    self.getDataSet(dataset_id, function(dataset) {
+      self.doCloudCall({
+        "dataset_id" : dataset_id,
+        "req": {
+          "fn": "removeCollision",
+          "hash": colissionHash,
+          meta_data: dataset.meta_data
+        }
+      }, success, failure);
+    });
+  },
+
+
+  // PRIVATE FUNCTIONS
+  isOnline: function(callback) {
+    var online = true;
+
+    // first, check if navigator.online is available
+    if(typeof navigator.onLine !== "undefined"){
+      online = navigator.onLine;
+    }
+
+    // second, check if Phonegap is available and has online info
+    if(online){
+      //use phonegap to determin if the network is available
+      if(typeof navigator.network !== "undefined" && typeof navigator.network.connection !== "undefined"){
+        var networkType = navigator.network.connection.type;
+        if(networkType === "none" || networkType === null) {
+          online = false;
+        }
+      }
+    }
+
+    return callback(online);
+  },
+
+  doNotify: function(dataset_id, uid, code, message) {
+
+    if( self.notify_callback || self.notify_callback_map[dataset_id]) {
+      var notifyFunc = self.notify_callback_map[dataset_id] || self.notify_callback;
+      if ( self.config['notify_' + code] ) {
+        var notification = {
+          "dataset_id" : dataset_id,
+          "uid" : uid,
+          "code" : code,
+          "message" : message
+        };
+        // make sure user doesn't block
+        setTimeout(function () {
+          notifyFunc(notification);
+        }, 0);
+      }
+    }
+  },
+
+  getDataSet: function(dataset_id, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      success(dataset);
+    } else {
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  getQueryParams: function(dataset_id, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      success(dataset.query_params);
+    } else {
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  setQueryParams: function(dataset_id, queryParams, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      dataset.query_params = queryParams;
+      self.saveDataSet(dataset_id);
+      if( success ) {
+        success(dataset.query_params);
+      }
+    } else {
+      if ( failure ) {
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  getMetaData: function(dataset_id, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      success(dataset.meta_data);
+    } else {
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  setMetaData: function(dataset_id, metaData, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      dataset.meta_data = metaData;
+      self.saveDataSet(dataset_id);
+      if( success ) {
+        success(dataset.meta_data);
+      }
+    } else {
+      if( failure ) {
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  getConfig: function(dataset_id, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      success(dataset.config);
+    } else {
+      if(failure){
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  setConfig: function(dataset_id, config, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      var fullConfig = self.setOptions(dataset.config, config);
+      dataset.config = fullConfig;
+      self.saveDataSet(dataset_id);
+      if( success ) {
+        success(dataset.config);
+      }
+    } else {
+      if( failure ) {
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  stopSync: function(dataset_id, success, failure) {
+    self.setConfig(dataset_id, {"sync_active" : false}, function() {
+      if( success ) {
+        success();
+      }
+    }, failure);
+  },
+
+  startSync: function(dataset_id, success, failure) {
+    self.setConfig(dataset_id, {"sync_active" : true}, function() {
+      if( success ) {
+        success();
+      }
+    }, failure);
+  },
+
+  doSync: function(dataset_id, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      dataset.syncPending = true;
+      self.saveDataSet(dataset_id);
+      if( success ) {
+        success();
+      }
+    } else {
+      if( failure ) {
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  forceSync: function(dataset_id, success, failure) {
+    var dataset = self.datasets[dataset_id];
+
+    if (dataset) {
+      dataset.syncForced = true;
+      self.saveDataSet(dataset_id);
+      if( success ) {
+        success();
+      }
+    } else {
+      if( failure ) {
+        failure('unknown_dataset ' + dataset_id, dataset_id);
+      }
+    }
+  },
+
+  sortObject : function(object) {
+    if (typeof object !== "object" || object === null) {
+      return object;
+    }
+
+    var result = [];
+
+    Object.keys(object).sort().forEach(function(key) {
+      result.push({
+        key: key,
+        value: self.sortObject(object[key])
+      });
+    });
+
+    return result;
+  },
+
+  sortedStringify : function(obj) {
+
+    var str = '';
+
+    try {
+      str = JSON.stringify(self.sortObject(obj));
+    } catch (e) {
+      console.error('Error stringifying sorted object:' + e);
+    }
+
+    return str;
+  },
+
+  generateHash: function(object) {
+    var hash = self.getHashMethod(self.sortedStringify(object));
+    return hash.toString();
+  },
+
+  addPendingObj: function(dataset_id, uid, data, action, success, failure) {
+    self.isOnline(function (online) {
+      if (!online) {
+        self.doNotify(dataset_id, uid, self.notifications.OFFLINE_UPDATE, action);
+      }
+    });
+
+    function storePendingObject(obj) {
+      obj.hash = obj.hash || self.generateHash(obj);
+
+      self.getDataSet(dataset_id, function(dataset) {
+
+        dataset.pending[obj.hash] = obj;
+
+        self.updateDatasetFromLocal(dataset, obj);
+
+        if(self.config.auto_sync_local_updates) {
+          dataset.syncPending = true;
+        }
+        self.saveDataSet(dataset_id);
+        self.doNotify(dataset_id, uid, self.notifications.LOCAL_UPDATE_APPLIED, action);
+
+        success(obj);
+      }, function(code, msg) {
+        if(failure) {
+          failure(code, msg);
+        }
+      });
+    }
+
+    var pendingObj = {};
+    pendingObj.inFlight = false;
+    pendingObj.action = action;
+    pendingObj.post = JSON.parse(JSON.stringify(data));
+    pendingObj.postHash = self.generateHash(pendingObj.post);
+    pendingObj.timestamp = new Date().getTime();
+    if( "create" === action ) {
+      //this hash value will be returned later on when the cloud returns updates. We can then link the old uid
+      //with new uid
+      pendingObj.hash = self.generateHash(pendingObj);
+      pendingObj.uid = pendingObj.hash;
+      storePendingObject(pendingObj);
+    } else {
+      self.read(dataset_id, uid, function(rec) {
+        pendingObj.uid = uid;
+        pendingObj.pre = rec.data;
+        pendingObj.preHash = self.generateHash(rec.data);
+        storePendingObject(pendingObj);
+      }, function(code, msg) {
+        if(failure){
+          failure(code, msg);
+        }
+      });
+    }
+  },
+
+  syncLoop: function(dataset_id) {
+    self.getDataSet(dataset_id, function(dataSet) {
+    
+      // The sync loop is currently active
+      dataSet.syncPending = false;
+      dataSet.syncRunning = true;
+      dataSet.syncLoopStart = new Date().getTime();
+      self.doNotify(dataset_id, null, self.notifications.SYNC_STARTED, null);
+
+      self.isOnline(function(online) {
+        if (!online) {
+          self.syncComplete(dataset_id, "offline", self.notifications.SYNC_FAILED);
+        } else {
+            var syncLoopParams = {};
+            syncLoopParams.fn = 'sync';
+            syncLoopParams.dataset_id = dataset_id;
+            syncLoopParams.query_params = dataSet.query_params;
+            syncLoopParams.config = dataSet.config;
+            syncLoopParams.meta_data = dataSet.meta_data;
+            //var datasetHash = self.generateLocalDatasetHash(dataSet);
+            syncLoopParams.dataset_hash = dataSet.hash;
+            syncLoopParams.acknowledgements = dataSet.acknowledgements || [];
+
+            var pending = dataSet.pending;
+            var pendingArray = [];
+            for(var i in pending ) {
+              // Mark the pending records we are about to submit as inflight and add them to the array for submission
+              // Don't re-add previous inFlight pending records who whave crashed - i.e. who's current state is unknown
+              // Don't add delayed records
+              if( !pending[i].inFlight && !pending[i].crashed && !pending[i].delayed) {
+                pending[i].inFlight = true;
+                pending[i].inFlightDate = new Date().getTime();
+                pendingArray.push(pending[i]);
+              }
+            }
+            syncLoopParams.pending = pendingArray;
+
+            if( pendingArray.length > 0 ) {
+              self.consoleLog('Starting sync loop - global hash = ' + dataSet.hash + ' :: params = ' + JSON.stringify(syncLoopParams, null, 2));
+            }
+            self.doCloudCall({
+              'dataset_id': dataset_id,
+              'req': syncLoopParams
+            }, function(res) {
+              var rec;
+
+              function processUpdates(updates, notification, acknowledgements) {
+                if( updates ) {
+                  for (var up in updates) {
+                    rec = updates[up];
+                    acknowledgements.push(rec);
+                    if( dataSet.pending[up] && dataSet.pending[up].inFlight) {
+                      delete dataSet.pending[up];
+                      self.doNotify(dataset_id, rec.uid, notification, rec);
+                    }
+                  }
+                }
+              }
+
+              // Check to see if any previously crashed inflight records can now be resolved
+              self.updateCrashedInFlightFromNewData(dataset_id, dataSet, res);
+
+              //Check to see if any delayed pending records can now be set to ready
+              self.updateDelayedFromNewData(dataset_id, dataSet, res);
+
+              //Check meta data as well to make sure it contains the correct info
+              self.updateMetaFromNewData(dataset_id, dataSet, res);
+
+
+              if (res.updates) {
+                var acknowledgements = [];
+                self.checkUidChanges(dataSet, res.updates.applied);
+                processUpdates(res.updates.applied, self.notifications.REMOTE_UPDATE_APPLIED, acknowledgements);
+                processUpdates(res.updates.failed, self.notifications.REMOTE_UPDATE_FAILED, acknowledgements);
+                processUpdates(res.updates.collisions, self.notifications.COLLISION_DETECTED, acknowledgements);
+                dataSet.acknowledgements = acknowledgements;
+              }
+
+              if (res.hash && res.hash !== dataSet.hash) {
+                self.consoleLog("Local dataset stale - syncing records :: local hash= " + dataSet.hash + " - remoteHash=" + res.hash);
+                // Different hash value returned - Sync individual records
+                self.syncRecords(dataset_id);
+              } else {
+                self.consoleLog("Local dataset up to date");
+                self.syncComplete(dataset_id,  "online", self.notifications.SYNC_COMPLETE);
+              }
+            }, function(msg, err) {
+              // The AJAX call failed to complete succesfully, so the state of the current pending updates is unknown
+              // Mark them as "crashed". The next time a syncLoop completets successfully, we will review the crashed
+              // records to see if we can determine their current state.
+              self.markInFlightAsCrashed(dataSet);
+              self.consoleLog("syncLoop failed : msg=" + msg + " :: err = " + err);
+              self.syncComplete(dataset_id, msg, self.notifications.SYNC_FAILED);
+            });
+        }
+      });
+    });
+  },
+
+  syncRecords: function(dataset_id) {
+
+    self.getDataSet(dataset_id, function(dataSet) {
+
+      var localDataSet = dataSet.data || {};
+
+      var clientRecs = {};
+      for (var i in localDataSet) {
+        var uid = i;
+        var hash = localDataSet[i].hash;
+        clientRecs[uid] = hash;
+      }
+
+      var syncRecParams = {};
+
+      syncRecParams.fn = 'syncRecords';
+      syncRecParams.dataset_id = dataset_id;
+      syncRecParams.query_params = dataSet.query_params;
+      syncRecParams.clientRecs = clientRecs;
+
+      self.consoleLog("syncRecParams :: " + JSON.stringify(syncRecParams));
+
+      self.doCloudCall({
+        'dataset_id': dataset_id,
+        'req': syncRecParams
+      }, function(res) {
+        self.consoleLog('syncRecords Res before applying pending changes :: ' + JSON.stringify(res));
+        self.applyPendingChangesToRecords(dataSet, res);
+        self.consoleLog('syncRecords Res after apply pending changes :: ' + JSON.stringify(res));
+
+        var i;
+
+        if (res.create) {
+          for (i in res.create) {
+            localDataSet[i] = {"hash" : res.create[i].hash, "data" : res.create[i].data};
+            self.doNotify(dataset_id, i, self.notifications.RECORD_DELTA_RECEIVED, "create");
+          }
+        }
+        
+        if (res.update) {
+          for (i in res.update) {
+            localDataSet[i].hash = res.update[i].hash;
+            localDataSet[i].data = res.update[i].data;
+            self.doNotify(dataset_id, i, self.notifications.RECORD_DELTA_RECEIVED, "update");
+          }
+        }
+        if (res['delete']) {
+          for (i in res['delete']) {
+            delete localDataSet[i];
+            self.doNotify(dataset_id, i, self.notifications.RECORD_DELTA_RECEIVED, "delete");
+          }
+        }
+
+        self.doNotify(dataset_id, res.hash, self.notifications.DELTA_RECEIVED, 'partial dataset');
+
+        dataSet.data = localDataSet;
+        if(res.hash) {
+          dataSet.hash = res.hash;
+        }
+        self.syncComplete(dataset_id, "online", self.notifications.SYNC_COMPLETE);
+      }, function(msg, err) {
+        self.consoleLog("syncRecords failed : msg=" + msg + " :: err=" + err);
+        self.syncComplete(dataset_id, msg, self.notifications.SYNC_FAILED);
+      });
+    });
+  },
+
+  syncComplete: function(dataset_id, status, notification) {
+
+    self.getDataSet(dataset_id, function(dataset) {
+      dataset.syncRunning = false;
+      dataset.syncLoopEnd = new Date().getTime();
+      self.saveDataSet(dataset_id);
+      self.doNotify(dataset_id, dataset.hash, notification, status);
+    });
+  },
+
+  applyPendingChangesToRecords: function(dataset, records){
+    var pendings = dataset.pending;
+    for(var pendingUid in pendings){
+      if(pendings.hasOwnProperty(pendingUid)){
+        var pendingObj = pendings[pendingUid];
+        var uid = pendingObj.uid;
+        //if the records contain any thing about the data records that are currently in pendings,
+        //it means there are local changes that haven't been applied to the cloud yet,
+        //so update the pre value of each pending record to relect the latest status from cloud
+        //and remove them from the response
+        if(records.create){
+          var creates = records.create;
+          if(creates && creates[uid]){
+            delete creates[uid];
+          }
+        }
+        if(records.update){
+          var updates = records.update;
+          if(updates && updates[uid]){
+            delete updates[uid];
+          }
+        }
+        if(records['delete']){
+          var deletes = records['delete'];
+          if(deletes && deletes[uid]){
+            delete deletes[uid];
+          }
+        }
+      }
+    }
+  },
+
+  checkUidChanges: function(dataset, appliedUpdates){
+    if(appliedUpdates){
+      var new_uids = {};
+      var changeUidsCount = 0;
+      for(var update in appliedUpdates){
+        if(appliedUpdates.hasOwnProperty(update)){
+          var applied_update = appliedUpdates[update];
+          var action = applied_update.action;
+          if(action && action === 'create'){
+            //we are receving the results of creations, at this point, we will have the old uid(the hash) and the real uid generated by the cloud
+            var newUid = applied_update.uid;
+            var oldUid = applied_update.hash;
+            changeUidsCount++;
+            //remember the mapping
+            self.uid_map[oldUid] = newUid;
+            new_uids[oldUid] = newUid;
+            //update the data uid in the dataset
+            var record = dataset.data[oldUid];
+            if(record){
+              dataset.data[newUid] = record;
+              delete dataset.data[oldUid];
+            }
+
+            //update the old uid in meta data
+            var metaData = dataset.meta[oldUid];
+            if(metaData) {
+              dataset.meta[newUid] = metaData;
+              delete dataset.meta[oldUid];
+            }
+          }
+        }
+      }
+      if(changeUidsCount > 0){
+        //we need to check all existing pendingRecords and update their UIDs if they are still the old values
+        for(var pending in dataset.pending){
+          if(dataset.pending.hasOwnProperty(pending)){
+            var pendingObj = dataset.pending[pending];
+            var pendingRecordUid = pendingObj.uid;
+            if(new_uids[pendingRecordUid]){
+              pendingObj.uid = new_uids[pendingRecordUid];
+            }
+          }
+        }
+      }
+    }
+  },
+
+  checkDatasets: function() {
+    for( var dataset_id in self.datasets ) {
+      if( self.datasets.hasOwnProperty(dataset_id) ) {
+        var dataset = self.datasets[dataset_id];
+        if(dataset && !dataset.syncRunning && (dataset.config.sync_active || dataset.syncForced)) {
+          // Check to see if it is time for the sync loop to run again
+          var lastSyncStart = dataset.syncLoopStart;
+          var lastSyncCmp = dataset.syncLoopEnd;
+          if(dataset.syncForced){
+            dataset.syncPending = true;
+          } else if( lastSyncStart == null ) {
+            self.consoleLog(dataset_id +' - Performing initial sync');
+            // Dataset has never been synced before - do initial sync
+            dataset.syncPending = true;
+          } else if (lastSyncCmp != null) {
+            var timeSinceLastSync = new Date().getTime() - lastSyncCmp;
+            var syncFrequency = dataset.config.sync_frequency * 1000;
+            if( timeSinceLastSync > syncFrequency ) {
+              // Time between sync loops has passed - do another sync
+              dataset.syncPending = true;
+            }
+          }
+
+          if( dataset.syncPending ) {
+            // Reset syncForced in case it was what caused the sync cycle to run.
+            dataset.syncForced = false;
+
+            // If the dataset requres syncing, run the sync loop. This may be because the sync interval has passed
+            // or because the sync_frequency has been changed or because a change was made to the dataset and the
+            // immediate_sync flag set to true
+            self.syncLoop(dataset_id);
+          }
+        }
+      }
+    }
+  },
+
+  /**
+   * Sets cloud handler for sync responsible for making network requests:
+   * For example function(params, success, failure)
+   */
+  setCloudHandler: function(cloudHandler){
+    self.cloudHandler = cloudHandler;
+  },
+
+  doCloudCall: function(params, success, failure) {
+    if(self.cloudHandler && typeof self.cloudHandler === "function" ){
+      self.cloudHandler(params, success, failure);
+    } else {
+      console.log("Missing cloud handler for sync. Please refer to documentation");
+    }
+  },
+
+  datasetMonitor: function() {
+    self.checkDatasets();
+
+    // Re-execute datasetMonitor every 500ms so we keep invoking checkDatasets();
+    setTimeout(function() {
+      self.datasetMonitor();
+    }, 500);
+  },
+  
+  /** Allow to set custom storage adapter **/
+  setStorageAdapter: function(adapter){
+    self.getStorageAdapter = adapter;
+  },
+
+  /** Allow to set custom hasing method **/
+  setHashMethod: function(method){
+    self.getHashMethod = method;
+  },
+  
+  getStorageAdapter: function(dataset_id, isSave, cb){
+    var onFail = function(msg, err){
+      var errMsg = (isSave?'save to': 'load from' ) + ' local storage failed msg: ' + msg + ' err: ' + err;
+      self.doNotify(dataset_id, null, self.notifications.CLIENT_STORAGE_FAILED, errMsg);
+      self.consoleLog(errMsg);
+    };
+    Lawnchair({fail:onFail, adapter: self.config.storage_strategy, size:self.config.file_system_quota, backup: self.config.icloud_backup}, function(){
+      return cb(null, this);
+    });
+  },
+
+  getHashMethod: CryptoJS.SHA1,
+
+  saveDataSet: function (dataset_id, cb) {
+    self.getDataSet(dataset_id, function(dataset) {
+      self.getStorageAdapter(dataset_id, true, function(err, storage){
+        storage.save({key:"dataset_" + dataset_id, val:dataset}, function(){
+          //save success
+          if(cb) {
+            return cb();
+          }
+        });
+      });
+    });
+  },
+
+  loadDataSet: function (dataset_id, success, failure) {
+    self.getStorageAdapter(dataset_id, false, function(err, storage){
+      storage.get( "dataset_" + dataset_id, function (data){
+        if (data && data.val) {
+          var dataset = data.val;
+          if(typeof dataset === "string"){
+            dataset = JSON.parse(dataset);
+          }
+          // Datasets should not be auto initialised when loaded - the mange function should be called for each dataset
+          // the user wants sync
+          dataset.initialised = false;
+          self.datasets[dataset_id] = dataset; // TODO: do we need to handle binary data?
+          self.consoleLog('load from local storage success for dataset_id :' + dataset_id);
+          if(success) {
+            return success(dataset);
+          }
+        } else {
+          // no data yet, probably first time. failure calback should handle this
+          if(failure) {
+            return failure();
+          }
+        }
+      });
+    });
+  },
+
+  clearCache: function(dataset_id, cb){
+    delete self.datasets[dataset_id];
+    self.notify_callback_map[dataset_id] = null;
+    self.getStorageAdapter(dataset_id, true, function(err, storage){
+      storage.remove("dataset_" + dataset_id, function(){
+        self.consoleLog('local cache is cleared for dataset : ' + dataset_id);
+        if(cb){
+          return cb();
+        }
+      });
+    });
+  },
+
+  updateDatasetFromLocal: function(dataset, pendingRec) {
+    var pending = dataset.pending;
+    var previousPendingUid;
+    var previousPending;
+
+    var uid = pendingRec.uid;
+    self.consoleLog('updating local dataset for uid ' + uid + ' - action = ' + pendingRec.action);
+
+    dataset.meta[uid] = dataset.meta[uid] || {};
+
+    // Creating a new record
+    if( pendingRec.action === "create" ) {
+      if( dataset.data[uid] ) {
+        self.consoleLog('dataset already exists for uid in create :: ' + JSON.stringify(dataset.data[uid]));
+
+        // We are trying to do a create using a uid which already exists
+        if (dataset.meta[uid].fromPending) {
+          // We are trying to create on top of an existing pending record
+          // Remove the previous pending record and use this one instead
+          previousPendingUid = dataset.meta[uid].pendingUid;
+          delete pending[previousPendingUid];
+        }
+      }
+      dataset.data[uid] = {};
+    }
+
+    if( pendingRec.action === "update" ) {
+      if( dataset.data[uid] ) {
+        if (dataset.meta[uid].fromPending) {
+          self.consoleLog('updating an existing pending record for dataset :: ' + JSON.stringify(dataset.data[uid]));
+          // We are trying to update an existing pending record
+          previousPendingUid = dataset.meta[uid].pendingUid;
+          previousPending = pending[previousPendingUid];
+          if(previousPending) {
+            if(!previousPending.inFlight){
+              self.consoleLog('existing pre-flight pending record = ' + JSON.stringify(previousPending));
+              // We are trying to perform an update on an existing pending record
+              // modify the original record to have the latest value and delete the pending update
+              previousPending.post = pendingRec.post;
+              previousPending.postHash = pendingRec.postHash;
+              delete pending[pendingRec.hash];
+              // Update the pending record to have the hash of the previous record as this is what is now being
+              // maintained in the pending array & is what we want in the meta record
+              pendingRec.hash = previousPendingUid;
+            } else {
+              //we are performing changes to a pending record which is inFlight. Until the status of this pending record is resolved,
+              //we should not submit this pending record to the cloud. Mark it as delayed.
+              self.consoleLog('existing in-inflight pending record = ' + JSON.stringify(previousPending));
+              pendingRec.delayed = true;
+              pendingRec.waiting = previousPending.hash;
+            }
+          }
+        }
+      }
+    }
+
+    if( pendingRec.action === "delete" ) {
+      if( dataset.data[uid] ) {
+        if (dataset.meta[uid].fromPending) {
+          self.consoleLog('Deleting an existing pending record for dataset :: ' + JSON.stringify(dataset.data[uid]));
+          // We are trying to delete an existing pending record
+          previousPendingUid = dataset.meta[uid].pendingUid;
+          previousPending = pending[previousPendingUid];
+          if( previousPending ) {
+            if(!previousPending.inFlight){
+              self.consoleLog('existing pending record = ' + JSON.stringify(previousPending));
+              if( previousPending.action === "create" ) {
+                // We are trying to perform a delete on an existing pending create
+                // These cancel each other out so remove them both
+                delete pending[pendingRec.hash];
+                delete pending[previousPendingUid];
+              }
+              if( previousPending.action === "update" ) {
+                // We are trying to perform a delete on an existing pending update
+                // Use the pre value from the pending update for the delete and
+                // get rid of the pending update
+                pendingRec.pre = previousPending.pre;
+                pendingRec.preHash = previousPending.preHash;
+                pendingRec.inFlight = false;
+                delete pending[previousPendingUid];
+              }
+            } else {
+              self.consoleLog('existing in-inflight pending record = ' + JSON.stringify(previousPending));
+              pendingRec.delayed = true;
+              pendingRec.waiting = previousPending.hash;
+            }
+          }
+        }
+        delete dataset.data[uid];
+      }
+    }
+
+    if( dataset.data[uid] ) {
+      dataset.data[uid].data = pendingRec.post;
+      dataset.data[uid].hash = pendingRec.postHash;
+      dataset.meta[uid].fromPending = true;
+      dataset.meta[uid].pendingUid = pendingRec.hash;
+    }
+  },
+
+  updateCrashedInFlightFromNewData: function(dataset_id, dataset, newData) {
+    var updateNotifications = {
+      applied: self.notifications.REMOTE_UPDATE_APPLIED,
+      failed: self.notifications.REMOTE_UPDATE_FAILED,
+      collisions: self.notifications.COLLISION_DETECTED
+    };
+
+    var pending = dataset.pending;
+    var resolvedCrashes = {};
+    var pendingHash;
+    var pendingRec;
+
+
+    if( pending ) {
+      for( pendingHash in pending ) {
+        if( pending.hasOwnProperty(pendingHash) ) {
+          pendingRec = pending[pendingHash];
+
+          if( pendingRec.inFlight && pendingRec.crashed) {
+            self.consoleLog('updateCrashedInFlightFromNewData - Found crashed inFlight pending record uid=' + pendingRec.uid + ' :: hash=' + pendingRec.hash );
+            if( newData && newData.updates && newData.updates.hashes) {
+
+              // Check if the updates received contain any info about the crashed in flight update
+              var crashedUpdate = newData.updates.hashes[pendingHash];
+              if( !crashedUpdate ) {
+                //TODO: review this - why we need to wait?
+                // No word on our crashed update - increment a counter to reflect another sync that did not give us
+                // any update on our crashed record.
+                if( pendingRec.crashedCount ) {
+                  pendingRec.crashedCount++;
+                }
+                else {
+                  pendingRec.crashedCount = 1;
+                }
+              }
+            }
+            else {
+              // No word on our crashed update - increment a counter to reflect another sync that did not give us
+              // any update on our crashed record.
+              if( pendingRec.crashedCount ) {
+                pendingRec.crashedCount++;
+              }
+              else {
+                pendingRec.crashedCount = 1;
+              }
+            }
+          }
+        }
+      }
+
+      for( pendingHash in pending ) {
+        if( pending.hasOwnProperty(pendingHash) ) {
+          pendingRec = pending[pendingHash];
+
+          if( pendingRec.inFlight && pendingRec.crashed) {
+            if( pendingRec.crashedCount > dataset.config.crashed_count_wait ) {
+              self.consoleLog('updateCrashedInFlightFromNewData - Crashed inflight pending record has reached crashed_count_wait limit : ' + JSON.stringify(pendingRec));
+              self.consoleLog('updateCrashedInFlightFromNewData - Retryig crashed inflight pending record');
+              pendingRec.crashed = false;
+              pendingRec.inFlight = false;
+            }
+          }
+        }
+      }
+    }
+  },
+
+  updateDelayedFromNewData: function(dataset_id, dataset, newData){
+    var pending = dataset.pending;
+    var pendingHash;
+    var pendingRec;
+    if(pending){
+      for( pendingHash in pending ){
+        if( pending.hasOwnProperty(pendingHash) ){
+          pendingRec = pending[pendingHash];
+          if( pendingRec.delayed && pendingRec.waiting ){
+            self.consoleLog('updateDelayedFromNewData - Found delayed pending record uid=' + pendingRec.uid + ' :: hash=' + pendingRec.hash + ' :: waiting=' + pendingRec.waiting);
+            if( newData && newData.updates && newData.updates.hashes ){
+              var waitingRec = newData.updates.hashes[pendingRec.waiting];
+              if(waitingRec){
+                self.consoleLog('updateDelayedFromNewData - Waiting pending record is resolved rec=' + JSON.stringify(waitingRec));
+                pendingRec.delayed = false;
+                pendingRec.waiting = undefined;
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  updateMetaFromNewData: function(dataset_id, dataset, newData){
+    var meta = dataset.meta;
+    if(meta && newData && newData.updates && newData.updates.hashes){
+      for(var uid in meta){
+        if(meta.hasOwnProperty(uid)){
+          var metadata = meta[uid];
+          var pendingHash = metadata.pendingUid;
+          self.consoleLog("updateMetaFromNewData - Found metadata with uid = " + uid + " :: pendingHash = " + pendingHash);
+          var pendingResolved = true;
+  
+          if(pendingHash){
+            //we have current pending in meta data, see if it's resolved
+            pendingResolved = false;
+            var hashresolved = newData.updates.hashes[pendingHash];
+            if(hashresolved){
+              self.consoleLog("updateMetaFromNewData - Found pendingUid in meta data resolved - resolved = " + JSON.stringify(hashresolved));
+              //the current pending is resolved in the cloud
+              metadata.pendingUid = undefined;
+              pendingResolved = true;
+            }
+          }
+
+          if(pendingResolved){
+            self.consoleLog("updateMetaFromNewData - both previous and current pendings are resolved for meta data with uid " + uid + ". Delete it.");
+            //all pendings are resolved, the entry can be removed from meta data
+            delete meta[uid];
+          }
+        }
+      }
+    }
+  },
+
+
+  markInFlightAsCrashed : function(dataset) {
+    var pending = dataset.pending;
+    var pendingHash;
+    var pendingRec;
+
+    if( pending ) {
+      var crashedRecords = {};
+      for( pendingHash in pending ) {
+        if( pending.hasOwnProperty(pendingHash) ) {
+          pendingRec = pending[pendingHash];
+
+          if( pendingRec.inFlight ) {
+            self.consoleLog('Marking in flight pending record as crashed : ' + pendingHash);
+            pendingRec.crashed = true;
+            crashedRecords[pendingRec.uid] = pendingRec;
+          }
+        }
+      }
+    }
+  },
+
+  consoleLog: function(msg) {
+    if( self.config.do_console_log ) {
+      console.log(msg);
+    }
+  }
+};
+
+(function() {
+  self.config = self.defaults;
+})();
+
+self.setCloudHandler(defaultCloudHandler.handler);
+
+module.exports = {
+  init: self.init,
+  manage: self.manage,
+  notify: self.notify,
+  doList: self.list,
+  getUID: self.getUID,
+  doCreate: self.create,
+  doRead: self.read,
+  doUpdate: self.update,
+  doDelete: self['delete'],
+  listCollisions: self.listCollisions,
+  removeCollision: self.removeCollision,
+  getPending : self.getPending,
+  clearPending : self.clearPending,
+  getDataset : self.getDataSet,
+  getQueryParams: self.getQueryParams,
+  setQueryParams: self.setQueryParams,
+  getMetaData: self.getMetaData,
+  setMetaData: self.setMetaData,
+  getConfig: self.getConfig,
+  setConfig: self.setConfig,
+  startSync: self.startSync,
+  stopSync: self.stopSync,
+  doSync: self.doSync,
+  forceSync: self.forceSync,
+  generateHash: self.generateHash,
+  loadDataSet: self.loadDataSet,
+  clearCache: self.clearCache,
+  setCloudHandler: self.setCloudHandler,
+  doCloudCall: self.doCloudCall,
+  setStorageAdapter: self.setStorageAdapter,
+  setHashMethod: self.setHashMethod
+};
+
+},{"../libs/generated/crypto":8,"../libs/generated/lawnchair":9,"./cloudHandler":16}],19:[function(_dereq_,module,exports){
 /*
  * loglevel - https://github.com/pimterry/loglevel
  *
@@ -6572,7 +10164,7 @@ function isUndefined(arg) {
     }));
 })();
 
-},{}],9:[function(_dereq_,module,exports){
+},{}],20:[function(_dereq_,module,exports){
 (function (global){
 /*! http://mths.be/punycode v1.2.4 by @mathias */
 ;(function(root) {
@@ -7083,7 +10675,7 @@ function isUndefined(arg) {
 }(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],10:[function(_dereq_,module,exports){
+},{}],21:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7169,7 +10761,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],11:[function(_dereq_,module,exports){
+},{}],22:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7256,13 +10848,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],12:[function(_dereq_,module,exports){
+},{}],23:[function(_dereq_,module,exports){
 'use strict';
 
 exports.decode = exports.parse = _dereq_('./decode');
 exports.encode = exports.stringify = _dereq_('./encode');
 
-},{"./decode":10,"./encode":11}],13:[function(_dereq_,module,exports){
+},{"./decode":21,"./encode":22}],24:[function(_dereq_,module,exports){
 var toString = Object.prototype.toString
 
 module.exports = function(val){
@@ -7293,7 +10885,7 @@ module.exports = function(val){
   return typeof val
 }
 
-},{}],14:[function(_dereq_,module,exports){
+},{}],25:[function(_dereq_,module,exports){
 //     Underscore.js 1.6.0
 //     http://underscorejs.org
 //     (c) 2009-2014 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -8638,7 +12230,7 @@ module.exports = function(val){
   }
 }).call(this);
 
-},{}],15:[function(_dereq_,module,exports){
+},{}],26:[function(_dereq_,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -9347,7 +12939,7 @@ function isNullOrUndefined(arg) {
   return  arg == null;
 }
 
-},{"punycode":9,"querystring":12}],16:[function(_dereq_,module,exports){
+},{"punycode":20,"querystring":23}],27:[function(_dereq_,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -9372,14 +12964,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],17:[function(_dereq_,module,exports){
+},{}],28:[function(_dereq_,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],18:[function(_dereq_,module,exports){
+},{}],29:[function(_dereq_,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -9969,7 +13561,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,_dereq_("FWaASH"),typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":17,"FWaASH":5,"inherits":16}],19:[function(_dereq_,module,exports){
+},{"./support/isBuffer":28,"FWaASH":5,"inherits":27}],30:[function(_dereq_,module,exports){
 var constants = _dereq_("./modules/constants");
 var events = _dereq_("./modules/events");
 var logger = _dereq_("./modules/logger");
@@ -9980,13 +13572,13 @@ var api_act = _dereq_("./modules/api_act");
 var api_auth = _dereq_("./modules/api_auth");
 var api_sec = _dereq_("./modules/api_sec");
 var api_hash = _dereq_("./modules/api_hash");
-var api_sync = _dereq_("./modules/sync-cli");
 var api_mbaas = _dereq_("./modules/api_mbaas");
 var api_cloud = _dereq_("./modules/api_cloud");
 var api_push = _dereq_("./modules/api_push");
 var fhparams = _dereq_("./modules/fhparams");
 var appProps = _dereq_("./modules/appProps");
 var device = _dereq_("./modules/device");
+var syncCloudHandler = _dereq_("./modules/sync_cloud_handler");
 
 var defaultFail = function(msg, error) {
   logger.error(msg + ":" + JSON.stringify(error));
@@ -10041,10 +13633,14 @@ fh.auth = api_auth;
 fh.cloud = api_cloud;
 fh.sec = api_sec;
 fh.hash = api_hash;
-fh.sync = api_sync;
 fh.push = api_push;
 fh.ajax = fh.__ajax = ajax;
 fh.mbaas = api_mbaas;
+
+// Mount sync to fh namespace
+fh.sync = _dereq_("fh-sync-js");
+fh.sync.setCloudHandler(syncCloudHandler);
+
 fh._getDeviceId = device.getDeviceId;
 fh.fh_timeout = 60000; //keep backward compatible
 
@@ -10103,7 +13699,7 @@ fh.reset = cloud.reset;
 //So, we assign $fh to the window name space directly here. (otherwise, we have to fork the grunt browserify plugin, then fork browerify and the dependent umd module, really not worthing the effort).
 window.$fh = fh;
 module.exports = fh;
-},{"./modules/ajax":21,"./modules/api_act":22,"./modules/api_auth":23,"./modules/api_cloud":24,"./modules/api_hash":25,"./modules/api_mbaas":26,"./modules/api_push":27,"./modules/api_sec":28,"./modules/appProps":29,"./modules/constants":31,"./modules/device":34,"./modules/events":35,"./modules/fhparams":36,"./modules/logger":42,"./modules/sync-cli":50,"./modules/waitForCloud":52}],20:[function(_dereq_,module,exports){
+},{"./modules/ajax":32,"./modules/api_act":33,"./modules/api_auth":34,"./modules/api_cloud":35,"./modules/api_hash":36,"./modules/api_mbaas":37,"./modules/api_push":38,"./modules/api_sec":39,"./modules/appProps":40,"./modules/constants":42,"./modules/device":45,"./modules/events":46,"./modules/fhparams":47,"./modules/logger":53,"./modules/sync_cloud_handler":61,"./modules/waitForCloud":63,"fh-sync-js":17}],31:[function(_dereq_,module,exports){
 var urlparser = _dereq_('url');
 
 var XDomainRequestWrapper = function(xdr){
@@ -10175,7 +13771,7 @@ XDomainRequestWrapper.prototype.getResponseHeader = function(n){
 
 module.exports = XDomainRequestWrapper;
 
-},{"url":15}],21:[function(_dereq_,module,exports){
+},{"url":26}],32:[function(_dereq_,module,exports){
 //a shameless copy from https://github.com/ForbesLindesay/ajax/blob/master/index.js.
 //it has the same methods and config options as jQuery/zeptojs but very light weight. see http://api.jquery.com/jQuery.ajax/
 //a few small changes are made for supporting IE 8 and other features:
@@ -10585,7 +14181,7 @@ function extend(target) {
   return target
 }
 
-},{"./XDomainRequestWrapper":20,"./events":35,"./fhparams":36,"./logger":42,"type-of":13}],22:[function(_dereq_,module,exports){
+},{"./XDomainRequestWrapper":31,"./events":46,"./fhparams":47,"./logger":53,"type-of":24}],33:[function(_dereq_,module,exports){
 var logger =_dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
@@ -10640,7 +14236,7 @@ module.exports = function(opts, success, fail){
   });
 };
 
-},{"./ajax":21,"./appProps":29,"./fhparams":36,"./handleError":37,"./logger":42,"./waitForCloud":52,"underscore":14}],23:[function(_dereq_,module,exports){
+},{"./ajax":32,"./appProps":40,"./fhparams":47,"./handleError":48,"./logger":53,"./waitForCloud":63,"underscore":25}],34:[function(_dereq_,module,exports){
 var logger = _dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
@@ -10768,7 +14364,7 @@ auth.verify = function(cb){
 };
 
 module.exports = auth;
-},{"./ajax":21,"./appProps":29,"./checkAuth":30,"./constants":31,"./data":33,"./device":34,"./fhparams":36,"./handleError":37,"./logger":42,"./waitForCloud":52}],24:[function(_dereq_,module,exports){
+},{"./ajax":32,"./appProps":40,"./checkAuth":41,"./constants":42,"./data":44,"./device":45,"./fhparams":47,"./handleError":48,"./logger":53,"./waitForCloud":63}],35:[function(_dereq_,module,exports){
 var logger =_dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
@@ -10827,7 +14423,7 @@ module.exports = function(opts, success, fail){
   });
 };
 
-},{"./ajax":21,"./appProps":29,"./fhparams":36,"./handleError":37,"./logger":42,"./waitForCloud":52,"underscore":14}],25:[function(_dereq_,module,exports){
+},{"./ajax":32,"./appProps":40,"./fhparams":47,"./handleError":48,"./logger":53,"./waitForCloud":63,"underscore":25}],36:[function(_dereq_,module,exports){
 var hashImpl = _dereq_("./security/hash");
 
 module.exports = function(p, s, f){
@@ -10839,7 +14435,7 @@ module.exports = function(p, s, f){
   params.params = p;
   hashImpl(params, s, f);
 };
-},{"./security/hash":48}],26:[function(_dereq_,module,exports){
+},{"./security/hash":59}],37:[function(_dereq_,module,exports){
 var logger =_dereq_("./logger");
 var cloud = _dereq_("./waitForCloud");
 var fhparams = _dereq_("./fhparams");
@@ -10884,7 +14480,7 @@ module.exports = function(opts, success, fail){
     }
   });
 };
-},{"./ajax":21,"./appProps":29,"./constants":31,"./fhparams":36,"./handleError":37,"./logger":42,"./waitForCloud":52}],27:[function(_dereq_,module,exports){
+},{"./ajax":32,"./appProps":40,"./constants":42,"./fhparams":47,"./handleError":48,"./logger":53,"./waitForCloud":63}],38:[function(_dereq_,module,exports){
 var logger = _dereq_("./logger");
 var appProps = _dereq_("./appProps");
 var cloud = _dereq_("./waitForCloud");
@@ -10917,7 +14513,7 @@ module.exports = function (onNotification, success, fail, config) {
   });
 };
 
-},{"./appProps":29,"./logger":42,"./waitForCloud":52}],28:[function(_dereq_,module,exports){
+},{"./appProps":40,"./logger":53,"./waitForCloud":63}],39:[function(_dereq_,module,exports){
 var keygen = _dereq_("./security/aes-keygen");
 var aes = _dereq_("./security/aes-node");
 var rsa = _dereq_("./security/rsa-node");
@@ -10961,7 +14557,7 @@ module.exports = function(p, s, f){
     }
   }
 };
-},{"./security/aes-keygen":46,"./security/aes-node":47,"./security/hash":48,"./security/rsa-node":49}],29:[function(_dereq_,module,exports){
+},{"./security/aes-keygen":57,"./security/aes-node":58,"./security/hash":59,"./security/rsa-node":60}],40:[function(_dereq_,module,exports){
 var consts = _dereq_("./constants");
 var ajax = _dereq_("./ajax");
 var logger = _dereq_("./logger");
@@ -11046,7 +14642,7 @@ module.exports = {
   setAppProps: setAppProps
 };
 
-},{"./ajax":21,"./constants":31,"./logger":42,"./queryMap":44,"underscore":14}],30:[function(_dereq_,module,exports){
+},{"./ajax":32,"./constants":42,"./logger":53,"./queryMap":55,"underscore":25}],41:[function(_dereq_,module,exports){
 var logger = _dereq_("./logger");
 var queryMap = _dereq_("./queryMap");
 var fhparams = _dereq_("./fhparams");
@@ -11159,10 +14755,10 @@ module.exports = {
   "handleAuthResponse": handleAuthResponse
 };
 
-},{"./data":33,"./fhparams":36,"./logger":42,"./queryMap":44}],31:[function(_dereq_,module,exports){
+},{"./data":44,"./fhparams":47,"./logger":53,"./queryMap":55}],42:[function(_dereq_,module,exports){
 module.exports = {
   "boxprefix": "/box/srv/1.1/",
-  "sdk_version": "2.18.6",
+  "sdk_version": "2.19.0",
   "config_js": "fhconfig.json",
   "INIT_EVENT": "fhinit",
   "INTERNAL_CONFIG_LOADED_EVENT": "internalfhconfigloaded",
@@ -11171,7 +14767,7 @@ module.exports = {
   "SESSION_TOKEN_KEY_NAME":"sessionToken"
 };
 
-},{}],32:[function(_dereq_,module,exports){
+},{}],43:[function(_dereq_,module,exports){
 module.exports = {
   readCookieValue  : function (cookie_name) {
     var name_str = cookie_name + "=";
@@ -11196,7 +14792,7 @@ module.exports = {
   }
 };
 
-},{}],33:[function(_dereq_,module,exports){
+},{}],44:[function(_dereq_,module,exports){
 var Lawnchair = _dereq_('../../libs/generated/lawnchair');
 var lawnchairext = _dereq_('./lawnchair-ext');
 var logger = _dereq_('./logger');
@@ -11262,7 +14858,7 @@ var data = {
 
 module.exports = data;
 
-},{"../../libs/generated/lawnchair":2,"./constants":31,"./lawnchair-ext":40,"./logger":42}],34:[function(_dereq_,module,exports){
+},{"../../libs/generated/lawnchair":2,"./constants":42,"./lawnchair-ext":51,"./logger":53}],45:[function(_dereq_,module,exports){
 var cookies = _dereq_("./cookies");
 var uuidModule = _dereq_("./uuid");
 var logger = _dereq_("./logger");
@@ -11332,14 +14928,14 @@ module.exports = {
     return destination;
   }
 };
-},{"./cookies":32,"./logger":42,"./platformsMap":43,"./uuid":51}],35:[function(_dereq_,module,exports){
+},{"./cookies":43,"./logger":53,"./platformsMap":54,"./uuid":62}],46:[function(_dereq_,module,exports){
 var EventEmitter = _dereq_('events').EventEmitter;
 
 var emitter = new EventEmitter();
 emitter.setMaxListeners(0);
 
 module.exports = emitter;
-},{"events":7}],36:[function(_dereq_,module,exports){
+},{"events":7}],47:[function(_dereq_,module,exports){
 var device = _dereq_("./device");
 var sdkversion = _dereq_("./sdkversion");
 var appProps = _dereq_("./appProps");
@@ -11423,7 +15019,7 @@ module.exports = {
   "getFHHeaders": getFHHeaders
 };
 
-},{"./appProps":29,"./device":34,"./logger":42,"./sdkversion":45}],37:[function(_dereq_,module,exports){
+},{"./appProps":40,"./device":45,"./logger":53,"./sdkversion":56}],48:[function(_dereq_,module,exports){
 module.exports = function(fail, req, resStatus, error){
   var errraw;
   var statusCode = 0;
@@ -11448,7 +15044,7 @@ module.exports = function(fail, req, resStatus, error){
   }
 };
 
-},{}],38:[function(_dereq_,module,exports){
+},{}],49:[function(_dereq_,module,exports){
 var constants = _dereq_("./constants");
 var appProps = _dereq_("./appProps");
 
@@ -11548,7 +15144,7 @@ CloudHost.prototype.getEnv = function(){
 };
 
 module.exports = CloudHost;
-},{"./appProps":29,"./constants":31}],39:[function(_dereq_,module,exports){
+},{"./appProps":40,"./constants":42}],50:[function(_dereq_,module,exports){
 var loadScript = _dereq_("./loadScript");
 var consts = _dereq_("./constants");
 var fhparams = _dereq_("./fhparams");
@@ -11634,7 +15230,7 @@ var loadCloudProps = function(app_props, callback) {
         }
         logger.error("App init returned error : " + errormsg);
         //use the cached host if we have a copy
-        if (savedHost) {
+        if (savedHost && req.status !== 400) {
           logger.info("Using cached host: " + JSON.stringify(savedHost));
           if (callback) {
             callback(null, {
@@ -11642,7 +15238,11 @@ var loadCloudProps = function(app_props, callback) {
             });
           }
         } else {
-          logger.error("No cached host found. Init failed.");
+          if (req.status === 400) {
+            logger.error(req.responseText);
+          } else {
+            logger.error("No cached host found. Init failed.");
+          }
           handleError(function(msg, err) {
             if (callback) {
               callback({
@@ -11689,7 +15289,7 @@ module.exports = {
   "loadCloudProps": loadCloudProps
 };
 
-},{"./ajax":21,"./appProps":29,"./constants":31,"./data":33,"./events":35,"./fhparams":36,"./handleError":37,"./loadScript":41,"./logger":42,"./security/hash":48}],40:[function(_dereq_,module,exports){
+},{"./ajax":32,"./appProps":40,"./constants":42,"./data":44,"./events":46,"./fhparams":47,"./handleError":48,"./loadScript":52,"./logger":53,"./security/hash":59}],51:[function(_dereq_,module,exports){
 var fileStorageAdapter = function (app_props, hashFunc) {
   // private methods
 
@@ -11878,7 +15478,7 @@ var fileStorageAdapter = function (app_props, hashFunc) {
 module.exports = {
   fileStorageAdapter: fileStorageAdapter
 };
-},{}],41:[function(_dereq_,module,exports){
+},{}],52:[function(_dereq_,module,exports){
 module.exports = function (url, callback) {
   var script;
   var head = document.head || document.getElementsByTagName("head")[0] || document.documentElement;
@@ -11901,7 +15501,7 @@ module.exports = function (url, callback) {
   head.insertBefore(script, head.firstChild);
 };
 
-},{}],42:[function(_dereq_,module,exports){
+},{}],53:[function(_dereq_,module,exports){
 var console = _dereq_('console');
 var log = _dereq_('loglevel');
 
@@ -11925,7 +15525,7 @@ log.setLevel('info');
  * Use either string or integer value
  */
 module.exports = log;
-},{"console":6,"loglevel":8}],43:[function(_dereq_,module,exports){
+},{"console":6,"loglevel":19}],54:[function(_dereq_,module,exports){
 module.exports = [
   {
     "destination" :"ipad",
@@ -11953,7 +15553,7 @@ module.exports = [
   }
 ];
 
-},{}],44:[function(_dereq_,module,exports){
+},{}],55:[function(_dereq_,module,exports){
 module.exports = function(url) {
   var qmap = {};
   var i = url.split("?");
@@ -11969,7 +15569,7 @@ module.exports = function(url) {
   }
   return qmap;
 };
-},{}],45:[function(_dereq_,module,exports){
+},{}],56:[function(_dereq_,module,exports){
 var constants = _dereq_("./constants");
 
 module.exports = function() {
@@ -11982,7 +15582,7 @@ module.exports = function() {
   return type + "/" + constants.sdk_version;
 };
 
-},{"./constants":31}],46:[function(_dereq_,module,exports){
+},{"./constants":42}],57:[function(_dereq_,module,exports){
 var rsa = _dereq_("../../../libs/rsa");
 var SecureRandom = rsa.SecureRandom;
 var byte2Hex = rsa.byte2Hex;
@@ -12024,7 +15624,7 @@ var aes_keygen = function(p, s, f){
 };
 
 module.exports = aes_keygen;
-},{"../../../libs/rsa":3}],47:[function(_dereq_,module,exports){
+},{"../../../libs/rsa":3}],58:[function(_dereq_,module,exports){
 var CryptoJS = _dereq_("../../../libs/generated/crypto");
 
 var encrypt = function(p, s, f){
@@ -12070,7 +15670,7 @@ module.exports = {
   decrypt: decrypt
 };
 
-},{"../../../libs/generated/crypto":1}],48:[function(_dereq_,module,exports){
+},{"../../../libs/generated/crypto":1}],59:[function(_dereq_,module,exports){
 var CryptoJS = _dereq_("../../../libs/generated/crypto");
 
 
@@ -12095,7 +15695,7 @@ var hash = function(p, s, f){
 };
 
 module.exports = hash;
-},{"../../../libs/generated/crypto":1}],49:[function(_dereq_,module,exports){
+},{"../../../libs/generated/crypto":1}],60:[function(_dereq_,module,exports){
 var rsa = _dereq_("../../../libs/rsa");
 var RSAKey = rsa.RSAKey;
 
@@ -12120,1339 +15720,17 @@ var encrypt = function(p, s, f){
 module.exports = {
   encrypt: encrypt
 };
-},{"../../../libs/rsa":3}],50:[function(_dereq_,module,exports){
-var actAPI = _dereq_("./api_act");
+},{"../../../libs/rsa":3}],61:[function(_dereq_,module,exports){
 var cloudAPI = _dereq_("./api_cloud");
-var CryptoJS = _dereq_("../../libs/generated/crypto");
-var Lawnchair = _dereq_('../../libs/generated/lawnchair');
 
-var self = {
-
-  // CONFIG
-  defaults: {
-    "sync_frequency": 10,
-    // How often to synchronise data with the cloud in seconds.
-    "auto_sync_local_updates": true,
-    // Should local chages be syned to the cloud immediately, or should they wait for the next sync interval
-    "notify_client_storage_failed": true,
-    // Should a notification event be triggered when loading/saving to client storage fails
-    "notify_sync_started": true,
-    // Should a notification event be triggered when a sync cycle with the server has been started
-    "notify_sync_complete": true,
-    // Should a notification event be triggered when a sync cycle with the server has been completed
-    "notify_offline_update": true,
-    // Should a notification event be triggered when an attempt was made to update a record while offline
-    "notify_collision_detected": true,
-    // Should a notification event be triggered when an update failed due to data collision
-    "notify_remote_update_failed": true,
-    // Should a notification event be triggered when an update failed for a reason other than data collision
-    "notify_local_update_applied": true,
-    // Should a notification event be triggered when an update was applied to the local data store
-    "notify_remote_update_applied": true,
-    // Should a notification event be triggered when an update was applied to the remote data store
-    "notify_delta_received": true,
-    // Should a notification event be triggered when a delta was received from the remote data store for the dataset 
-    "notify_record_delta_received": true,
-    // Should a notification event be triggered when a delta was received from the remote data store for a record
-    "notify_sync_failed": true,
-    // Should a notification event be triggered when the sync loop failed to complete
-    "do_console_log": false,
-    // Should log statements be written to console.log
-    "crashed_count_wait" : 10,
-    // How many syncs should we check for updates on crashed in flight updates before we give up searching
-    "resend_crashed_updates" : true,
-    // If we have reached the crashed_count_wait limit, should we re-try sending the crashed in flight pending record
-    "sync_active" : true,
-    // Is the background sync with the cloud currently active
-    "storage_strategy" : "html5-filesystem",
-    // Storage strategy to use for Lawnchair - supported strategies are 'html5-filesystem' and 'dom'
-    "file_system_quota" : 50 * 1024 * 1204,
-    // Amount of space to request from the HTML5 filesystem API when running in browser
-    "has_custom_sync" : null,
-    //If the app has custom cloud sync function, it should be set to true. If set to false, the default mbaas sync implementation will be used. When set to null or undefined, 
-    //a check will be performed to determine which implementation to use
-    "icloud_backup" : false //ios only. If set to true, the file will be backed by icloud
-  },
-
-  notifications: {
-    "CLIENT_STORAGE_FAILED": "client_storage_failed",
-    // loading/saving to client storage failed
-    "SYNC_STARTED": "sync_started",
-    // A sync cycle with the server has been started
-    "SYNC_COMPLETE": "sync_complete",
-    // A sync cycle with the server has been completed
-    "OFFLINE_UPDATE": "offline_update",
-    // An attempt was made to update a record while offline
-    "COLLISION_DETECTED": "collision_detected",
-    //Update Failed due to data collision
-    "REMOTE_UPDATE_FAILED": "remote_update_failed",
-    // Update Failed for a reason other than data collision
-    "REMOTE_UPDATE_APPLIED": "remote_update_applied",
-    // An update was applied to the remote data store
-    "LOCAL_UPDATE_APPLIED": "local_update_applied",
-    // An update was applied to the local data store
-    "DELTA_RECEIVED": "delta_received",
-    // A delta was received from the remote data store for the dataset 
-    "RECORD_DELTA_RECEIVED": "record_delta_received",
-    // A delta was received from the remote data store for the record 
-    "SYNC_FAILED": "sync_failed"
-    // Sync loop failed to complete
-  },
-
-  datasets: {},
-
-  // Initialise config to default values;
-  config: undefined,
-
-  //TODO: deprecate this
-  notify_callback: undefined,
-
-  notify_callback_map : {},
-
-  init_is_called: false,
-
-  //this is used to map the temp data uid (created on client) to the real uid (created in the cloud)
-  uid_map: {},
-
-  // PUBLIC FUNCTION IMPLEMENTATIONS
-  init: function(options) {
-    self.consoleLog('sync - init called');
-
-    self.config = JSON.parse(JSON.stringify(self.defaults));
-    for (var i in options) {
-      self.config[i] = options[i];
-    }
-
-    //prevent multiple monitors from created if init is called multiple times
-    if(!self.init_is_called){
-      self.init_is_called = true;
-      self.datasetMonitor();
-    }
-  },
-
-  notify: function(datasetId, callback) {
-    if(arguments.length === 1 && typeof datasetId === 'function'){
-      self.notify_callback = datasetId;
-    } else {
-      self.notify_callback_map[datasetId] = callback;
-    }
-  },
-
-  manage: function(dataset_id, opts, query_params, meta_data, cb) {
-    self.consoleLog('manage - START');
-
-    // Currently we do not enforce the rule that init() funciton should be called before manage().
-    // We need this check to guard against self.config undefined
-    if (!self.config){
-      self.config = JSON.parse(JSON.stringify(self.defaults));
-    }
-
-    var options = opts || {};
-
-    var doManage = function(dataset) {
-      self.consoleLog('doManage dataset :: initialised = ' + dataset.initialised + " :: " + dataset_id + ' :: ' + JSON.stringify(options));
-
-      var currentDatasetCfg = (dataset.config) ? dataset.config : self.config;
-      var datasetConfig = self.setOptions(currentDatasetCfg, options);
-
-      dataset.query_params = query_params || dataset.query_params || {};
-      dataset.meta_data = meta_data || dataset.meta_data || {};
-      dataset.config = datasetConfig;
-      dataset.syncRunning = false;
-      dataset.syncPending = true;
-      dataset.initialised = true;
-      if(typeof dataset.meta === "undefined"){
-        dataset.meta = {};
-      }
-
-      self.saveDataSet(dataset_id, function() {
-
-        if( cb ) {
-          cb();
-        }
-      });
-    };
-
-    // Check if the dataset is already loaded
-    self.getDataSet(dataset_id, function(dataset) {
-      self.consoleLog('manage - dataset already loaded');
-      doManage(dataset);
-    }, function(err) {
-      self.consoleLog('manage - dataset not loaded... trying to load');
-
-      // Not already loaded, try to load from local storage
-      self.loadDataSet(dataset_id, function(dataset) {
-          self.consoleLog('manage - dataset loaded from local storage');
-
-          // Loading from local storage worked
-
-          // Fire the local update event to indicate that dataset was loaded from local storage
-          self.doNotify(dataset_id, null, self.notifications.LOCAL_UPDATE_APPLIED, "load");
-
-          // Put the dataet under the management of the sync service
-          doManage(dataset);
-        },
-        function(err) {
-          // No dataset in memory or local storage - create a new one and put it in memory
-          self.consoleLog('manage - Creating new dataset for id ' + dataset_id);
-          var dataset = {};
-          dataset.data = {};
-          dataset.pending = {};
-          dataset.meta = {};
-          self.datasets[dataset_id] = dataset;
-          doManage(dataset);
-        });
-    });
-  },
-
-  /**
-   * Sets options for passed in config, if !config then options will be applied to default config.
-   * @param {Object} config - config to which options will be applied
-   * @param {Object} options - options to be applied to the config
-   */
-  setOptions: function(config, options) {
-    // Make sure config is initialised
-    if( ! config ) {
-      config = JSON.parse(JSON.stringify(self.defaults));
-    }
-
-
-    var datasetConfig = JSON.parse(JSON.stringify(config));
-    var optionsIn = JSON.parse(JSON.stringify(options));
-    for (var k in optionsIn) {
-      datasetConfig[k] = optionsIn[k];
-    }
-
-    return datasetConfig;
-  },
-
-  list: function(dataset_id, success, failure) {
-    self.getDataSet(dataset_id, function(dataset) {
-      if (dataset && dataset.data) {
-        // Return a copy of the dataset so updates will not automatically make it back into the dataset
-        var res = JSON.parse(JSON.stringify(dataset.data));
-        success(res);
-      } else {
-        if(failure) {
-          failure('no_data');
-        }
-      }
-    }, function(code, msg) {
-      if(failure) {
-        failure(code, msg);
-      }
-    });
-  },
-
-  getUID: function(oldOrNewUid){
-    var uid = self.uid_map[oldOrNewUid];
-    if(uid || uid === 0){
-      return uid;
-    } else {
-      return oldOrNewUid;
-    }
-  },
-
-  create: function(dataset_id, data, success, failure) {
-    if(data == null){
-      if(failure){
-        return failure("null_data");
-      }
-    }
-    self.addPendingObj(dataset_id, null, data, "create", success, failure);
-  },
-
-  read: function(dataset_id, uid, success, failure) {
-    self.getDataSet(dataset_id, function(dataset) {
-      uid = self.getUID(uid);
-      var rec = dataset.data[uid];
-      if (!rec) {
-        failure("unknown_uid");
-      } else {
-        // Return a copy of the record so updates will not automatically make it back into the dataset
-        var res = JSON.parse(JSON.stringify(rec));
-        success(res);
-      }
-    }, function(code, msg) {
-      if(failure) {
-        failure(code, msg);
-      }
-    });
-  },
-
-  update: function(dataset_id, uid, data, success, failure) {
-    uid = self.getUID(uid);
-    self.addPendingObj(dataset_id, uid, data, "update", success, failure);
-  },
-
-  'delete': function(dataset_id, uid, success, failure) {
-    uid = self.getUID(uid);
-    self.addPendingObj(dataset_id, uid, null, "delete", success, failure);
-  },
-
-  getPending: function(dataset_id, cb) {
-    self.getDataSet(dataset_id, function(dataset) {
-      var res;
-      if( dataset ) {
-        res = dataset.pending;
-      }
-      cb(res);
-    }, function(err, datatset_id) {
-        self.consoleLog(err);
-    });
-  },
-
-  clearPending: function(dataset_id, cb) {
-    self.getDataSet(dataset_id, function(dataset) {
-      dataset.pending = {};
-      self.saveDataSet(dataset_id, cb);
-    });
-  },
-
-  listCollisions : function(dataset_id, success, failure){
-    self.getDataSet(dataset_id, function(dataset) {
-      self.doCloudCall({
-        "dataset_id": dataset_id,
-        "req": {
-          "fn": "listCollisions",
-          "meta_data" : dataset.meta_data
-        }
-      }, success, failure);
-    }, failure);
-  },
-
-  removeCollision: function(dataset_id, colissionHash, success, failure) {
-    self.getDataSet(dataset_id, function(dataset) {
-      self.doCloudCall({
-        "dataset_id" : dataset_id,
-        "req": {
-          "fn": "removeCollision",
-          "hash": colissionHash,
-          meta_data: dataset.meta_data
-        }
-      }, success, failure);
-    });
-  },
-
-
-  // PRIVATE FUNCTIONS
-  isOnline: function(callback) {
-    var online = true;
-
-    // first, check if navigator.online is available
-    if(typeof navigator.onLine !== "undefined"){
-      online = navigator.onLine;
-    }
-
-    // second, check if Phonegap is available and has online info
-    if(online){
-      //use phonegap to determin if the network is available
-      if(typeof navigator.network !== "undefined" && typeof navigator.network.connection !== "undefined"){
-        var networkType = navigator.network.connection.type;
-        if(networkType === "none" || networkType === null) {
-          online = false;
-        }
-      }
-    }
-
-    return callback(online);
-  },
-
-  doNotify: function(dataset_id, uid, code, message) {
-
-    if( self.notify_callback || self.notify_callback_map[dataset_id]) {
-      var notifyFunc = self.notify_callback_map[dataset_id] || self.notify_callback;
-      if ( self.config['notify_' + code] ) {
-        var notification = {
-          "dataset_id" : dataset_id,
-          "uid" : uid,
-          "code" : code,
-          "message" : message
-        };
-        // make sure user doesn't block
-        setTimeout(function () {
-          notifyFunc(notification);
-        }, 0);
-      }
-    }
-  },
-
-  getDataSet: function(dataset_id, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      success(dataset);
-    } else {
-      if(failure){
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  getQueryParams: function(dataset_id, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      success(dataset.query_params);
-    } else {
-      if(failure){
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  setQueryParams: function(dataset_id, queryParams, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      dataset.query_params = queryParams;
-      self.saveDataSet(dataset_id);
-      if( success ) {
-        success(dataset.query_params);
-      }
-    } else {
-      if ( failure ) {
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  getMetaData: function(dataset_id, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      success(dataset.meta_data);
-    } else {
-      if(failure){
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  setMetaData: function(dataset_id, metaData, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      dataset.meta_data = metaData;
-      self.saveDataSet(dataset_id);
-      if( success ) {
-        success(dataset.meta_data);
-      }
-    } else {
-      if( failure ) {
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  getConfig: function(dataset_id, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      success(dataset.config);
-    } else {
-      if(failure){
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  setConfig: function(dataset_id, config, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      var fullConfig = self.setOptions(dataset.config, config);
-      dataset.config = fullConfig;
-      self.saveDataSet(dataset_id);
-      if( success ) {
-        success(dataset.config);
-      }
-    } else {
-      if( failure ) {
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  stopSync: function(dataset_id, success, failure) {
-    self.setConfig(dataset_id, {"sync_active" : false}, function() {
-      if( success ) {
-        success();
-      }
-    }, failure);
-  },
-
-  startSync: function(dataset_id, success, failure) {
-    self.setConfig(dataset_id, {"sync_active" : true}, function() {
-      if( success ) {
-        success();
-      }
-    }, failure);
-  },
-
-  doSync: function(dataset_id, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      dataset.syncPending = true;
-      self.saveDataSet(dataset_id);
-      if( success ) {
-        success();
-      }
-    } else {
-      if( failure ) {
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  forceSync: function(dataset_id, success, failure) {
-    var dataset = self.datasets[dataset_id];
-
-    if (dataset) {
-      dataset.syncForced = true;
-      self.saveDataSet(dataset_id);
-      if( success ) {
-        success();
-      }
-    } else {
-      if( failure ) {
-        failure('unknown_dataset ' + dataset_id, dataset_id);
-      }
-    }
-  },
-
-  sortObject : function(object) {
-    if (typeof object !== "object" || object === null) {
-      return object;
-    }
-
-    var result = [];
-
-    Object.keys(object).sort().forEach(function(key) {
-      result.push({
-        key: key,
-        value: self.sortObject(object[key])
-      });
-    });
-
-    return result;
-  },
-
-  sortedStringify : function(obj) {
-
-    var str = '';
-
-    try {
-      str = JSON.stringify(self.sortObject(obj));
-    } catch (e) {
-      console.error('Error stringifying sorted object:' + e);
-    }
-
-    return str;
-  },
-
-  generateHash: function(object) {
-    var hash = CryptoJS.SHA1(self.sortedStringify(object));
-    return hash.toString();
-  },
-
-  addPendingObj: function(dataset_id, uid, data, action, success, failure) {
-    self.isOnline(function (online) {
-      if (!online) {
-        self.doNotify(dataset_id, uid, self.notifications.OFFLINE_UPDATE, action);
-      }
-    });
-
-    function storePendingObject(obj) {
-      obj.hash = obj.hash || self.generateHash(obj);
-
-      self.getDataSet(dataset_id, function(dataset) {
-
-        dataset.pending[obj.hash] = obj;
-
-        self.updateDatasetFromLocal(dataset, obj);
-
-        if(self.config.auto_sync_local_updates) {
-          dataset.syncPending = true;
-        }
-        self.saveDataSet(dataset_id);
-        self.doNotify(dataset_id, uid, self.notifications.LOCAL_UPDATE_APPLIED, action);
-
-        success(obj);
-      }, function(code, msg) {
-        if(failure) {
-          failure(code, msg);
-        }
-      });
-    }
-
-    var pendingObj = {};
-    pendingObj.inFlight = false;
-    pendingObj.action = action;
-    pendingObj.post = JSON.parse(JSON.stringify(data));
-    pendingObj.postHash = self.generateHash(pendingObj.post);
-    pendingObj.timestamp = new Date().getTime();
-    if( "create" === action ) {
-      //this hash value will be returned later on when the cloud returns updates. We can then link the old uid
-      //with new uid
-      pendingObj.hash = self.generateHash(pendingObj);
-      pendingObj.uid = pendingObj.hash;
-      storePendingObject(pendingObj);
-    } else {
-      self.read(dataset_id, uid, function(rec) {
-        pendingObj.uid = uid;
-        pendingObj.pre = rec.data;
-        pendingObj.preHash = self.generateHash(rec.data);
-        storePendingObject(pendingObj);
-      }, function(code, msg) {
-        if(failure){
-          failure(code, msg);
-        }
-      });
-    }
-  },
-
-  syncLoop: function(dataset_id) {
-    self.getDataSet(dataset_id, function(dataSet) {
-    
-      // The sync loop is currently active
-      dataSet.syncPending = false;
-      dataSet.syncRunning = true;
-      dataSet.syncLoopStart = new Date().getTime();
-      self.doNotify(dataset_id, null, self.notifications.SYNC_STARTED, null);
-
-      self.isOnline(function(online) {
-        if (!online) {
-          self.syncComplete(dataset_id, "offline", self.notifications.SYNC_FAILED);
-        } else {
-          self.checkHasCustomSync(dataset_id, function() {
-
-            var syncLoopParams = {};
-            syncLoopParams.fn = 'sync';
-            syncLoopParams.dataset_id = dataset_id;
-            syncLoopParams.query_params = dataSet.query_params;
-            syncLoopParams.config = dataSet.config;
-            syncLoopParams.meta_data = dataSet.meta_data;
-            //var datasetHash = self.generateLocalDatasetHash(dataSet);
-            syncLoopParams.dataset_hash = dataSet.hash;
-            syncLoopParams.acknowledgements = dataSet.acknowledgements || [];
-
-            var pending = dataSet.pending;
-            var pendingArray = [];
-            for(var i in pending ) {
-              // Mark the pending records we are about to submit as inflight and add them to the array for submission
-              // Don't re-add previous inFlight pending records who whave crashed - i.e. who's current state is unknown
-              // Don't add delayed records
-              if( !pending[i].inFlight && !pending[i].crashed && !pending[i].delayed) {
-                pending[i].inFlight = true;
-                pending[i].inFlightDate = new Date().getTime();
-                pendingArray.push(pending[i]);
-              }
-            }
-            syncLoopParams.pending = pendingArray;
-
-            if( pendingArray.length > 0 ) {
-              self.consoleLog('Starting sync loop - global hash = ' + dataSet.hash + ' :: params = ' + JSON.stringify(syncLoopParams, null, 2));
-            }
-            self.doCloudCall({
-              'dataset_id': dataset_id,
-              'req': syncLoopParams
-            }, function(res) {
-              var rec;
-
-              function processUpdates(updates, notification, acknowledgements) {
-                if( updates ) {
-                  for (var up in updates) {
-                    rec = updates[up];
-                    acknowledgements.push(rec);
-                    if( dataSet.pending[up] && dataSet.pending[up].inFlight) {
-                      delete dataSet.pending[up];
-                      self.doNotify(dataset_id, rec.uid, notification, rec);
-                    }
-                  }
-                }
-              }
-
-              // Check to see if any previously crashed inflight records can now be resolved
-              self.updateCrashedInFlightFromNewData(dataset_id, dataSet, res);
-
-              //Check to see if any delayed pending records can now be set to ready
-              self.updateDelayedFromNewData(dataset_id, dataSet, res);
-
-              //Check meta data as well to make sure it contains the correct info
-              self.updateMetaFromNewData(dataset_id, dataSet, res);
-
-
-              if (res.updates) {
-                var acknowledgements = [];
-                self.checkUidChanges(dataSet, res.updates.applied);
-                processUpdates(res.updates.applied, self.notifications.REMOTE_UPDATE_APPLIED, acknowledgements);
-                processUpdates(res.updates.failed, self.notifications.REMOTE_UPDATE_FAILED, acknowledgements);
-                processUpdates(res.updates.collisions, self.notifications.COLLISION_DETECTED, acknowledgements);
-                dataSet.acknowledgements = acknowledgements;
-              }
-
-              if (res.hash && res.hash !== dataSet.hash) {
-                self.consoleLog("Local dataset stale - syncing records :: local hash= " + dataSet.hash + " - remoteHash=" + res.hash);
-                // Different hash value returned - Sync individual records
-                self.syncRecords(dataset_id);
-              } else {
-                self.consoleLog("Local dataset up to date");
-                self.syncComplete(dataset_id,  "online", self.notifications.SYNC_COMPLETE);
-              }
-            }, function(msg, err) {
-              // The AJAX call failed to complete succesfully, so the state of the current pending updates is unknown
-              // Mark them as "crashed". The next time a syncLoop completets successfully, we will review the crashed
-              // records to see if we can determine their current state.
-              self.markInFlightAsCrashed(dataSet);
-              self.consoleLog("syncLoop failed : msg=" + msg + " :: err = " + err);
-              self.syncComplete(dataset_id, msg, self.notifications.SYNC_FAILED);
-            });
-          });
-        }
-      });
-    });
-  },
-
-  syncRecords: function(dataset_id) {
-
-    self.getDataSet(dataset_id, function(dataSet) {
-
-      var localDataSet = dataSet.data || {};
-
-      var clientRecs = {};
-      for (var i in localDataSet) {
-        var uid = i;
-        var hash = localDataSet[i].hash;
-        clientRecs[uid] = hash;
-      }
-
-      var syncRecParams = {};
-
-      syncRecParams.fn = 'syncRecords';
-      syncRecParams.dataset_id = dataset_id;
-      syncRecParams.query_params = dataSet.query_params;
-      syncRecParams.clientRecs = clientRecs;
-
-      self.consoleLog("syncRecParams :: " + JSON.stringify(syncRecParams));
-
-      self.doCloudCall({
-        'dataset_id': dataset_id,
-        'req': syncRecParams
-      }, function(res) {
-        self.consoleLog('syncRecords Res before applying pending changes :: ' + JSON.stringify(res));
-        self.applyPendingChangesToRecords(dataSet, res);
-        self.consoleLog('syncRecords Res after apply pending changes :: ' + JSON.stringify(res));
-
-        var i;
-
-        if (res.create) {
-          for (i in res.create) {
-            localDataSet[i] = {"hash" : res.create[i].hash, "data" : res.create[i].data};
-            self.doNotify(dataset_id, i, self.notifications.RECORD_DELTA_RECEIVED, "create");
-          }
-        }
-        
-        if (res.update) {
-          for (i in res.update) {
-            localDataSet[i].hash = res.update[i].hash;
-            localDataSet[i].data = res.update[i].data;
-            self.doNotify(dataset_id, i, self.notifications.RECORD_DELTA_RECEIVED, "update");
-          }
-        }
-        if (res['delete']) {
-          for (i in res['delete']) {
-            delete localDataSet[i];
-            self.doNotify(dataset_id, i, self.notifications.RECORD_DELTA_RECEIVED, "delete");
-          }
-        }
-
-        self.doNotify(dataset_id, res.hash, self.notifications.DELTA_RECEIVED, 'partial dataset');
-
-        dataSet.data = localDataSet;
-        if(res.hash) {
-          dataSet.hash = res.hash;
-        }
-        self.syncComplete(dataset_id, "online", self.notifications.SYNC_COMPLETE);
-      }, function(msg, err) {
-        self.consoleLog("syncRecords failed : msg=" + msg + " :: err=" + err);
-        self.syncComplete(dataset_id, msg, self.notifications.SYNC_FAILED);
-      });
-    });
-  },
-
-  syncComplete: function(dataset_id, status, notification) {
-
-    self.getDataSet(dataset_id, function(dataset) {
-      dataset.syncRunning = false;
-      dataset.syncLoopEnd = new Date().getTime();
-      self.saveDataSet(dataset_id);
-      self.doNotify(dataset_id, dataset.hash, notification, status);
-    });
-  },
-
-  applyPendingChangesToRecords: function(dataset, records){
-    var pendings = dataset.pending;
-    for(var pendingUid in pendings){
-      if(pendings.hasOwnProperty(pendingUid)){
-        var pendingObj = pendings[pendingUid];
-        var uid = pendingObj.uid;
-        //if the records contain any thing about the data records that are currently in pendings,
-        //it means there are local changes that haven't been applied to the cloud yet,
-        //so update the pre value of each pending record to relect the latest status from cloud
-        //and remove them from the response
-        if(records.create){
-          var creates = records.create;
-          if(creates && creates[uid]){
-            delete creates[uid];
-          }
-        }
-        if(records.update){
-          var updates = records.update;
-          if(updates && updates[uid]){
-            delete updates[uid];
-          }
-        }
-        if(records['delete']){
-          var deletes = records['delete'];
-          if(deletes && deletes[uid]){
-            delete deletes[uid];
-          }
-        }
-      }
-    }
-  },
-
-  checkUidChanges: function(dataset, appliedUpdates){
-    if(appliedUpdates){
-      var new_uids = {};
-      var changeUidsCount = 0;
-      for(var update in appliedUpdates){
-        if(appliedUpdates.hasOwnProperty(update)){
-          var applied_update = appliedUpdates[update];
-          var action = applied_update.action;
-          if(action && action === 'create'){
-            //we are receving the results of creations, at this point, we will have the old uid(the hash) and the real uid generated by the cloud
-            var newUid = applied_update.uid;
-            var oldUid = applied_update.hash;
-            changeUidsCount++;
-            //remember the mapping
-            self.uid_map[oldUid] = newUid;
-            new_uids[oldUid] = newUid;
-            //update the data uid in the dataset
-            var record = dataset.data[oldUid];
-            if(record){
-              dataset.data[newUid] = record;
-              delete dataset.data[oldUid];
-            }
-
-            //update the old uid in meta data
-            var metaData = dataset.meta[oldUid];
-            if(metaData) {
-              dataset.meta[newUid] = metaData;
-              delete dataset.meta[oldUid];
-            }
-          }
-        }
-      }
-      if(changeUidsCount > 0){
-        //we need to check all existing pendingRecords and update their UIDs if they are still the old values
-        for(var pending in dataset.pending){
-          if(dataset.pending.hasOwnProperty(pending)){
-            var pendingObj = dataset.pending[pending];
-            var pendingRecordUid = pendingObj.uid;
-            if(new_uids[pendingRecordUid]){
-              pendingObj.uid = new_uids[pendingRecordUid];
-            }
-          }
-        }
-      }
-    }
-  },
-
-  checkDatasets: function() {
-    for( var dataset_id in self.datasets ) {
-      if( self.datasets.hasOwnProperty(dataset_id) ) {
-        var dataset = self.datasets[dataset_id];
-        if(dataset && !dataset.syncRunning && (dataset.config.sync_active || dataset.syncForced)) {
-          // Check to see if it is time for the sync loop to run again
-          var lastSyncStart = dataset.syncLoopStart;
-          var lastSyncCmp = dataset.syncLoopEnd;
-          if(dataset.syncForced){
-            dataset.syncPending = true;
-          } else if( lastSyncStart == null ) {
-            self.consoleLog(dataset_id +' - Performing initial sync');
-            // Dataset has never been synced before - do initial sync
-            dataset.syncPending = true;
-          } else if (lastSyncCmp != null) {
-            var timeSinceLastSync = new Date().getTime() - lastSyncCmp;
-            var syncFrequency = dataset.config.sync_frequency * 1000;
-            if( timeSinceLastSync > syncFrequency ) {
-              // Time between sync loops has passed - do another sync
-              dataset.syncPending = true;
-            }
-          }
-
-          if( dataset.syncPending ) {
-            // Reset syncForced in case it was what caused the sync cycle to run.
-            dataset.syncForced = false;
-
-            // If the dataset requres syncing, run the sync loop. This may be because the sync interval has passed
-            // or because the sync_frequency has been changed or because a change was made to the dataset and the
-            // immediate_sync flag set to true
-            self.syncLoop(dataset_id);
-          }
-        }
-      }
-    }
-  },
-
-  checkHasCustomSync : function(dataset_id, cb) {
-    var dataset = self.datasets[dataset_id];
-    if(dataset && dataset.config){
-      self.consoleLog("dataset.config.has_custom_sync = " + dataset.config.has_custom_sync);
-      if(dataset.config.has_custom_sync != null) {
-        return cb();
-      }
-      self.consoleLog('starting check has custom sync');
-
-      actAPI({
-        'act' : dataset_id,
-        'req': {
-          'fn': 'sync'
-        }
-      }, function(res) {
-        //if the custom sync is defined in the cloud, this call should success.
-        //if failed, we think this the custom sync is not defined
-        self.consoleLog('check has_custom_sync - success - ', res);
-        dataset.config.has_custom_sync = true;
-        return cb();
-      }, function(msg,err) {
-        self.consoleLog('check has_custom_sync - failure - ', err);
-        if(err.status && err.status === 500){
-          //if we receive 500, it could be that there is an error occured due to missing parameters or similar,
-          //but the endpoint is defined.
-          self.consoleLog('check has_custom_sync - failed with 500, endpoint does exists');
-          dataset.config.has_custom_sync = true;
-        } else {
-          dataset.config.has_custom_sync = false;
-        }
-        return cb();
-      });
-    } else {
-      return cb();
-    }
-  },
-
-  doCloudCall: function(params, success, failure) {
-    var callbackCalled = false;
-    try {
-      var hasCustomSync = false;
-      var dataset = self.datasets[params.dataset_id];
-      if(dataset && dataset.config){
-        hasCustomSync = dataset.config.has_custom_sync;
-      }
-      if( hasCustomSync === true ) {
-        actAPI({
-          'act' : params.dataset_id,
-          'req' : params.req
-        }, function(res) {
-          callbackCalled = true;
-          success(res);
-        }, function(msg, err) {
-          callbackCalled = true;
-          failure(msg, err);
-        });      
-      } else {
-        cloudAPI({
-          'path' : '/mbaas/sync/' + params.dataset_id,
-          'method' : 'post',
-          'data' : params.req
-        }, function(res) {
-          callbackCalled = true;
-          success(res);
-        }, function(msg, err) {
-          callbackCalled = true;
-          failure(msg, err);
-        });
-      }
-    }
-    catch (e) {
-      var msg = 'Exception in doCloudCall - ' + e;
-      self.consoleLog(msg);
-      // only call the failure callback if success/failure hasn't been called already
-      // This will prevent exceptions thrown in the success/failure callback resulting in that fn being called again
-      // i.e. only let the caller known about exceptions up to the point of the ajax call being made.
-      if (!callbackCalled) {
-        failure(msg, e);
-      }
-    }
-  },
-
-  datasetMonitor: function() {
-    self.checkDatasets();
-
-    // Re-execute datasetMonitor every 500ms so we keep invoking checkDatasets();
-    setTimeout(function() {
-      self.datasetMonitor();
-    }, 500);
-  },
-
-  getStorageAdapter: function(dataset_id, isSave, cb){
-    var onFail = function(msg, err){
-      var errMsg = (isSave?'save to': 'load from' ) + ' local storage failed msg: ' + msg + ' err: ' + err;
-      self.doNotify(dataset_id, null, self.notifications.CLIENT_STORAGE_FAILED, errMsg);
-      self.consoleLog(errMsg);
-    };
-    Lawnchair({fail:onFail, adapter: self.config.storage_strategy, size:self.config.file_system_quota, backup: self.config.icloud_backup}, function(){
-      return cb(null, this);
-    });
-  },
-
-  saveDataSet: function (dataset_id, cb) {
-    self.getDataSet(dataset_id, function(dataset) {
-      self.getStorageAdapter(dataset_id, true, function(err, storage){
-        storage.save({key:"dataset_" + dataset_id, val:dataset}, function(){
-          //save success
-          if(cb) {
-            return cb();
-          }
-        });
-      });
-    });
-  },
-
-  loadDataSet: function (dataset_id, success, failure) {
-    self.getStorageAdapter(dataset_id, false, function(err, storage){
-      storage.get( "dataset_" + dataset_id, function (data){
-        if (data && data.val) {
-          var dataset = data.val;
-          if(typeof dataset === "string"){
-            dataset = JSON.parse(dataset);
-          }
-          // Datasets should not be auto initialised when loaded - the mange function should be called for each dataset
-          // the user wants sync
-          dataset.initialised = false;
-          self.datasets[dataset_id] = dataset; // TODO: do we need to handle binary data?
-          self.consoleLog('load from local storage success for dataset_id :' + dataset_id);
-          if(success) {
-            return success(dataset);
-          }
-        } else {
-          // no data yet, probably first time. failure calback should handle this
-          if(failure) {
-            return failure();
-          }
-        }
-      });
-    });
-  },
-
-  clearCache: function(dataset_id, cb){
-    delete self.datasets[dataset_id];
-    self.notify_callback_map[dataset_id] = null;
-    self.getStorageAdapter(dataset_id, true, function(err, storage){
-      storage.remove("dataset_" + dataset_id, function(){
-        self.consoleLog('local cache is cleared for dataset : ' + dataset_id);
-        if(cb){
-          return cb();
-        }
-      });
-    });
-  },
-
-  updateDatasetFromLocal: function(dataset, pendingRec) {
-    var pending = dataset.pending;
-    var previousPendingUid;
-    var previousPending;
-
-    var uid = pendingRec.uid;
-    self.consoleLog('updating local dataset for uid ' + uid + ' - action = ' + pendingRec.action);
-
-    dataset.meta[uid] = dataset.meta[uid] || {};
-
-    // Creating a new record
-    if( pendingRec.action === "create" ) {
-      if( dataset.data[uid] ) {
-        self.consoleLog('dataset already exists for uid in create :: ' + JSON.stringify(dataset.data[uid]));
-
-        // We are trying to do a create using a uid which already exists
-        if (dataset.meta[uid].fromPending) {
-          // We are trying to create on top of an existing pending record
-          // Remove the previous pending record and use this one instead
-          previousPendingUid = dataset.meta[uid].pendingUid;
-          delete pending[previousPendingUid];
-        }
-      }
-      dataset.data[uid] = {};
-    }
-
-    if( pendingRec.action === "update" ) {
-      if( dataset.data[uid] ) {
-        if (dataset.meta[uid].fromPending) {
-          self.consoleLog('updating an existing pending record for dataset :: ' + JSON.stringify(dataset.data[uid]));
-          // We are trying to update an existing pending record
-          previousPendingUid = dataset.meta[uid].pendingUid;
-          previousPending = pending[previousPendingUid];
-          if(previousPending) {
-            if(!previousPending.inFlight){
-              self.consoleLog('existing pre-flight pending record = ' + JSON.stringify(previousPending));
-              // We are trying to perform an update on an existing pending record
-              // modify the original record to have the latest value and delete the pending update
-              previousPending.post = pendingRec.post;
-              previousPending.postHash = pendingRec.postHash;
-              delete pending[pendingRec.hash];
-              // Update the pending record to have the hash of the previous record as this is what is now being
-              // maintained in the pending array & is what we want in the meta record
-              pendingRec.hash = previousPendingUid;
-            } else {
-              //we are performing changes to a pending record which is inFlight. Until the status of this pending record is resolved,
-              //we should not submit this pending record to the cloud. Mark it as delayed.
-              self.consoleLog('existing in-inflight pending record = ' + JSON.stringify(previousPending));
-              pendingRec.delayed = true;
-              pendingRec.waiting = previousPending.hash;
-            }
-          }
-        }
-      }
-    }
-
-    if( pendingRec.action === "delete" ) {
-      if( dataset.data[uid] ) {
-        if (dataset.meta[uid].fromPending) {
-          self.consoleLog('Deleting an existing pending record for dataset :: ' + JSON.stringify(dataset.data[uid]));
-          // We are trying to delete an existing pending record
-          previousPendingUid = dataset.meta[uid].pendingUid;
-          previousPending = pending[previousPendingUid];
-          if( previousPending ) {
-            if(!previousPending.inFlight){
-              self.consoleLog('existing pending record = ' + JSON.stringify(previousPending));
-              if( previousPending.action === "create" ) {
-                // We are trying to perform a delete on an existing pending create
-                // These cancel each other out so remove them both
-                delete pending[pendingRec.hash];
-                delete pending[previousPendingUid];
-              }
-              if( previousPending.action === "update" ) {
-                // We are trying to perform a delete on an existing pending update
-                // Use the pre value from the pending update for the delete and
-                // get rid of the pending update
-                pendingRec.pre = previousPending.pre;
-                pendingRec.preHash = previousPending.preHash;
-                pendingRec.inFlight = false;
-                delete pending[previousPendingUid];
-              }
-            } else {
-              self.consoleLog('existing in-inflight pending record = ' + JSON.stringify(previousPending));
-              pendingRec.delayed = true;
-              pendingRec.waiting = previousPending.hash;
-            }
-          }
-        }
-        delete dataset.data[uid];
-      }
-    }
-
-    if( dataset.data[uid] ) {
-      dataset.data[uid].data = pendingRec.post;
-      dataset.data[uid].hash = pendingRec.postHash;
-      dataset.meta[uid].fromPending = true;
-      dataset.meta[uid].pendingUid = pendingRec.hash;
-    }
-  },
-
-  updateCrashedInFlightFromNewData: function(dataset_id, dataset, newData) {
-    var updateNotifications = {
-      applied: self.notifications.REMOTE_UPDATE_APPLIED,
-      failed: self.notifications.REMOTE_UPDATE_FAILED,
-      collisions: self.notifications.COLLISION_DETECTED
-    };
-
-    var pending = dataset.pending;
-    var resolvedCrashes = {};
-    var pendingHash;
-    var pendingRec;
-
-
-    if( pending ) {
-      for( pendingHash in pending ) {
-        if( pending.hasOwnProperty(pendingHash) ) {
-          pendingRec = pending[pendingHash];
-
-          if( pendingRec.inFlight && pendingRec.crashed) {
-            self.consoleLog('updateCrashedInFlightFromNewData - Found crashed inFlight pending record uid=' + pendingRec.uid + ' :: hash=' + pendingRec.hash );
-            if( newData && newData.updates && newData.updates.hashes) {
-
-              // Check if the updates received contain any info about the crashed in flight update
-              var crashedUpdate = newData.updates.hashes[pendingHash];
-              if( !crashedUpdate ) {
-                //TODO: review this - why we need to wait?
-                // No word on our crashed update - increment a counter to reflect another sync that did not give us
-                // any update on our crashed record.
-                if( pendingRec.crashedCount ) {
-                  pendingRec.crashedCount++;
-                }
-                else {
-                  pendingRec.crashedCount = 1;
-                }
-              }
-            }
-            else {
-              // No word on our crashed update - increment a counter to reflect another sync that did not give us
-              // any update on our crashed record.
-              if( pendingRec.crashedCount ) {
-                pendingRec.crashedCount++;
-              }
-              else {
-                pendingRec.crashedCount = 1;
-              }
-            }
-          }
-        }
-      }
-
-      for( pendingHash in pending ) {
-        if( pending.hasOwnProperty(pendingHash) ) {
-          pendingRec = pending[pendingHash];
-
-          if( pendingRec.inFlight && pendingRec.crashed) {
-            if( pendingRec.crashedCount > dataset.config.crashed_count_wait ) {
-              self.consoleLog('updateCrashedInFlightFromNewData - Crashed inflight pending record has reached crashed_count_wait limit : ' + JSON.stringify(pendingRec));
-              self.consoleLog('updateCrashedInFlightFromNewData - Retryig crashed inflight pending record');
-              pendingRec.crashed = false;
-              pendingRec.inFlight = false;
-            }
-          }
-        }
-      }
-    }
-  },
-
-  updateDelayedFromNewData: function(dataset_id, dataset, newData){
-    var pending = dataset.pending;
-    var pendingHash;
-    var pendingRec;
-    if(pending){
-      for( pendingHash in pending ){
-        if( pending.hasOwnProperty(pendingHash) ){
-          pendingRec = pending[pendingHash];
-          if( pendingRec.delayed && pendingRec.waiting ){
-            self.consoleLog('updateDelayedFromNewData - Found delayed pending record uid=' + pendingRec.uid + ' :: hash=' + pendingRec.hash + ' :: waiting=' + pendingRec.waiting);
-            if( newData && newData.updates && newData.updates.hashes ){
-              var waitingRec = newData.updates.hashes[pendingRec.waiting];
-              if(waitingRec){
-                self.consoleLog('updateDelayedFromNewData - Waiting pending record is resolved rec=' + JSON.stringify(waitingRec));
-                pendingRec.delayed = false;
-                pendingRec.waiting = undefined;
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-
-  updateMetaFromNewData: function(dataset_id, dataset, newData){
-    var meta = dataset.meta;
-    if(meta && newData && newData.updates && newData.updates.hashes){
-      for(var uid in meta){
-        if(meta.hasOwnProperty(uid)){
-          var metadata = meta[uid];
-          var pendingHash = metadata.pendingUid;
-          self.consoleLog("updateMetaFromNewData - Found metadata with uid = " + uid + " :: pendingHash = " + pendingHash);
-          var pendingResolved = true;
-  
-          if(pendingHash){
-            //we have current pending in meta data, see if it's resolved
-            pendingResolved = false;
-            var hashresolved = newData.updates.hashes[pendingHash];
-            if(hashresolved){
-              self.consoleLog("updateMetaFromNewData - Found pendingUid in meta data resolved - resolved = " + JSON.stringify(hashresolved));
-              //the current pending is resolved in the cloud
-              metadata.pendingUid = undefined;
-              pendingResolved = true;
-            }
-          }
-
-          if(pendingResolved){
-            self.consoleLog("updateMetaFromNewData - both previous and current pendings are resolved for meta data with uid " + uid + ". Delete it.");
-            //all pendings are resolved, the entry can be removed from meta data
-            delete meta[uid];
-          }
-        }
-      }
-    }
-  },
-
-
-  markInFlightAsCrashed : function(dataset) {
-    var pending = dataset.pending;
-    var pendingHash;
-    var pendingRec;
-
-    if( pending ) {
-      var crashedRecords = {};
-      for( pendingHash in pending ) {
-        if( pending.hasOwnProperty(pendingHash) ) {
-          pendingRec = pending[pendingHash];
-
-          if( pendingRec.inFlight ) {
-            self.consoleLog('Marking in flight pending record as crashed : ' + pendingHash);
-            pendingRec.crashed = true;
-            crashedRecords[pendingRec.uid] = pendingRec;
-          }
-        }
-      }
-    }
-  },
-
-  consoleLog: function(msg) {
-    if( self.config.do_console_log ) {
-      console.log(msg);
-    }
-  }
+module.exports = function (params, success, failure) {
+    cloudAPI({
+        'path': '/mbaas/sync/' + params.dataset_id,
+        'method': 'post',
+        'data': params.req
+    }, success, failure);
 };
-
-(function() {
-  self.config = self.defaults;
-  //Initialse the sync service with default config
-  //self.init({});
-})();
-
-module.exports = {
-  init: self.init,
-  manage: self.manage,
-  notify: self.notify,
-  doList: self.list,
-  getUID: self.getUID,
-  doCreate: self.create,
-  doRead: self.read,
-  doUpdate: self.update,
-  doDelete: self['delete'],
-  listCollisions: self.listCollisions,
-  removeCollision: self.removeCollision,
-  getPending : self.getPending,
-  clearPending : self.clearPending,
-  getDataset : self.getDataSet,
-  getQueryParams: self.getQueryParams,
-  setQueryParams: self.setQueryParams,
-  getMetaData: self.getMetaData,
-  setMetaData: self.setMetaData,
-  getConfig: self.getConfig,
-  setConfig: self.setConfig,
-  startSync: self.startSync,
-  stopSync: self.stopSync,
-  doSync: self.doSync,
-  forceSync: self.forceSync,
-  generateHash: self.generateHash,
-  loadDataSet: self.loadDataSet,
-  checkHasCustomSync: self.checkHasCustomSync,
-  clearCache: self.clearCache,
-  doCloudCall: self.doCloudCall
-};
-
-},{"../../libs/generated/crypto":1,"../../libs/generated/lawnchair":2,"./api_act":22,"./api_cloud":24}],51:[function(_dereq_,module,exports){
+},{"./api_cloud":35}],62:[function(_dereq_,module,exports){
 module.exports = {
   createUUID : function () {
     //from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
@@ -13469,7 +15747,7 @@ module.exports = {
   }
 };
 
-},{}],52:[function(_dereq_,module,exports){
+},{}],63:[function(_dereq_,module,exports){
 var initializer = _dereq_("./initializer");
 var events = _dereq_("./events");
 var CloudHost = _dereq_("./hosts");
@@ -13577,8 +15855,8 @@ module.exports = {
   getInitError: getInitError,
   reset: reset
 };
-},{"./appProps":29,"./constants":31,"./data":33,"./events":35,"./fhparams":36,"./hosts":38,"./initializer":39,"./logger":42}]},{},[19])
-(19)
+},{"./appProps":40,"./constants":42,"./data":44,"./events":46,"./fhparams":47,"./hosts":49,"./initializer":50,"./logger":53}]},{},[30])
+(30)
 });
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],2:[function(require,module,exports){
