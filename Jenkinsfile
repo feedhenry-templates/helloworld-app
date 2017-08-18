@@ -24,16 +24,16 @@ node(platform) {
     }
 
     stage("Prepare") {
-        sh "cordova platform rm $platform"
-        sh "cordova platform add $platform"
-        sh "cordova prepare $platform"
+        sh "cordova platform rm ${platform}"
+        sh "cordova platform add ${platform}"
+        sh "cordova prepare ${platform}"
     }
 
     stage("Build") {
             if (BUILD_CONFIG == 'debug') {
-               sh 'cordova build $platform --debug'
+               sh "cordova build ${platform} --debug"
             } else {
-               sh 'cordova build $platform --release'
+               sh "cordova build ${platform} --release"
             }
     }
 
