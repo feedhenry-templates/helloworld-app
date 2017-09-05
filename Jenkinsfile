@@ -16,7 +16,12 @@ CODE_SIGN_PROFILE_ID = params?.BUILD_CREDENTIAL_ID?.trim()   // e.g. "redhat-dis
 /* ------------- use these to hardcode values in Jenkinsfile ---------------- */
 PROJECT_NAME = "Helloworld"
 CLEAN = true                          // Do a clean build and sign
-
+INFO_PLIST = "Helloworld/Helloworld-Info.plist"
+VERSION = "1.0.0"
+SHORT_VERSION = "1.0"
+BUNDLE_ID = "org.feedhenry.dart.helloworld.cordova"
+OUTPUT_FILE_NAME="${PROJECT_NAME}-${BUILD_CONFIG}.ipa"
+SDK = "iphoneos"
 
 node(platform) {
     stage("Checkout") {
@@ -30,11 +35,29 @@ node(platform) {
     }
 
     stage("Build") {
+        if (platform == 'android') {
             if (BUILD_CONFIG == 'debug') {
-               sh "cordova build ${platform} --debug"
+                sh "cordova build ${platform} --debug"
             } else {
-               sh "cordova build ${platform} --release"
+                sh "cordova build ${platform} --release"
             }
+        } else {
+            xcodeBuild(
+                cleanBeforeBuild: CLEAN,
+                src: "./platforms/${platform}",
+                schema: "${PROJECT_NAME}",
+                workspace: "${PROJECT_NAME}",
+                buildDir: "build",
+                sdk: "${SDK}",
+                version: "${VERSION}",
+                shortVersion: "${SHORT_VERSION}",
+                bundleId: "${BUNDLE_ID}",
+                infoPlistPath: "${INFO_PLIST}",
+                xcodeBuildArgs: 'ENABLE_BITCODE=NO OTHER_CFLAGS="-fstack-protector -fstack-protector-all"',
+                autoSign: false,
+                config: "${BUILD_CONFIG}"
+            )
+        }
     }
 
     stage("Sign") {
@@ -59,7 +82,7 @@ node(platform) {
                 profileId: "${CODE_SIGN_PROFILE_ID}",
                 clean: CLEAN,
                 verify: true,
-                appPath: "platforms/ios/build/emulator/${PROJECT_NAME}.app"
+                appPath: "platforms/ios/build/${BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.app"
             )
         }
     }
@@ -69,7 +92,7 @@ node(platform) {
             archiveArtifacts artifacts: "platforms/android/build/outputs/apk/android-${BUILD_CONFIG}.apk", excludes: 'platforms/android/build/outputs/apk/*-unaligned.apk'
         }
         if (platform == 'ios') {
-            archiveArtifacts artifacts: "platforms/ios/build/emulator/${PROJECT_NAME}.ipa"
+            archiveArtifacts artifacts: "platforms/ios/build/${BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.app"
         }
     }
 }
