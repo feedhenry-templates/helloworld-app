@@ -24,9 +24,9 @@ OUTPUT_FILE_NAME="${PROJECT_NAME}-${BUILD_CONFIG}.ipa"
 SDK = "iphoneos"
 
 if (BUILD_CONFIG.toLowerCase() == "debug") {
-    BUILD_CONFIG = "Debug"
+    OSX_BUILD_CONFIG = "Debug"
 } else if(BUILD_CONFIG.toLowerCase() == "release" || BUILD_CONFIG.toLowerCase() == "distribution") {
-    BUILD_CONFIG = "Release"
+    OSX_BUILD_CONFIG = "Release"
 }
 
 node(platform) {
@@ -61,7 +61,7 @@ node(platform) {
                 infoPlistPath: "${INFO_PLIST}",
                 xcodeBuildArgs: 'ENABLE_BITCODE=NO OTHER_CFLAGS="-fstack-protector -fstack-protector-all"',
                 autoSign: false,
-                config: "${BUILD_CONFIG}"
+                config: "${OSX_BUILD_CONFIG}"
             )
         }
     }
@@ -88,7 +88,7 @@ node(platform) {
                 profileId: "${CODE_SIGN_PROFILE_ID}",
                 clean: CLEAN,
                 verify: true,
-                appPath: "platforms/ios/build/${BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.app"
+                appPath: "platforms/ios/build/${OSX_BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.app"
             )
         }
     }
@@ -98,7 +98,7 @@ node(platform) {
             archiveArtifacts artifacts: "platforms/android/build/outputs/apk/android-${BUILD_CONFIG}.apk", excludes: 'platforms/android/build/outputs/apk/*-unaligned.apk'
         }
         if (platform == 'ios') {
-            archiveArtifacts artifacts: "platforms/ios/build/${BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.ipa"
+            archiveArtifacts artifacts: "platforms/ios/build/${OSX_BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.ipa"
         }
     }
 }
