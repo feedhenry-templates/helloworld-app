@@ -23,6 +23,12 @@ BUNDLE_ID = "org.feedhenry.dart.helloworld.cordova"
 OUTPUT_FILE_NAME="${PROJECT_NAME}-${BUILD_CONFIG}.ipa"
 SDK = "iphoneos"
 
+if (BUILD_CONFIG.toLowerCase() == "debug") {
+    BUILD_CONFIG = "Debug"
+} else if(BUILD_CONFIG.toLowerCase() == "release" || BUILD_CONFIG.toLowerCase() == "distribution") {
+    BUILD_CONFIG = "Release"
+}
+
 node(platform) {
     stage("Checkout") {
         checkout scm
