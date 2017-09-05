@@ -98,7 +98,7 @@ node(platform) {
             archiveArtifacts artifacts: "platforms/android/build/outputs/apk/android-${BUILD_CONFIG}.apk", excludes: 'platforms/android/build/outputs/apk/*-unaligned.apk'
         }
         if (platform == 'ios') {
-            archiveArtifacts artifacts: "platforms/ios/build/${BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.app"
+            archiveArtifacts artifacts: "platforms/ios/build/${BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.ipa"
         }
     }
 }
