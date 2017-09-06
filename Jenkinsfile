@@ -35,9 +35,11 @@ node(platform) {
     }
 
     stage("Prepare") {
+        sh 'npm install --production'
         sh "cordova platform rm ${platform}"
         sh "cordova platform add ${platform}"
         sh "cordova prepare ${platform}"
+        sh 'rm -rf node_modules'
     }
 
     stage("Build") {
@@ -98,7 +100,7 @@ node(platform) {
             archiveArtifacts artifacts: "platforms/android/build/outputs/apk/android-${BUILD_CONFIG}.apk", excludes: 'platforms/android/build/outputs/apk/*-unaligned.apk'
         }
         if (platform == 'ios') {
-            archiveArtifacts artifacts: "platforms/ios/build/${OSX_BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.ipa"
+            archiveArtifacts artifacts: "platforms/${platform}/build/${OSX_BUILD_CONFIG}-${SDK}/${PROJECT_NAME}.ipa"
         }
     }
 }
