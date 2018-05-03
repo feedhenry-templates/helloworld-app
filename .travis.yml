@@ -7,6 +7,7 @@ services:
 node_js:
   - 4
   - 6
+  - 8
 before_install:
   - npm install fh-build -g
   - fh-build template
