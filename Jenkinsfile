@@ -35,7 +35,9 @@ node(platform) {
     }
 
     stage("Prepare") {
-        writeFile file: 'www/fhconfig.json', text: params.FH_CONFIG_CONTENT
+        if(params.FH_CONFIG_CONTENT) {
+            writeFile file: 'www/fhconfig.json', text: params.FH_CONFIG_CONTENT
+        }
         sh 'npm install --production'
         sh "cordova platform rm ${platform}"
         sh "cordova platform add ${platform}"
