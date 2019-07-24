@@ -1,0 +1,21 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.7.1
+ignore: {}
+# patches apply the minimum changes required to fix a vulnerability
+patch:
+  'npm:minimatch:20160620':
+    - fh-js-sdk > browserify-shim > readdirp > minimatch:
+        patched: '2017-10-11T14:40:09.281Z'
+    - fh-js-sdk > browserify > glob > minimatch:
+        patched: '2017-10-11T14:40:09.281Z'
+  'npm:negotiator:20160616':
+    - grunt-contrib-connect > connect > negotiator:
+        patched: '2017-10-11T14:40:09.281Z'
+  'npm:qs:20140806-1':
+    - grunt-contrib-watch > tiny-lr-fork > qs:
+        patched: '2017-10-11T14:40:09.281Z'
+  'npm:uglify-js:20151024':
+    - fh-js-sdk > browserify > umd > uglify-js:
+        patched: '2017-10-11T14:40:09.281Z'
+    - fh-js-sdk > browserify > umd > ruglify > uglify-js:
+        patched: '2017-10-11T14:40:09.281Z'
